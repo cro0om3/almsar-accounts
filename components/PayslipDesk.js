@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { savePayslipAction } from "../app/actions";
+import { flashSaved } from "./SavedToast";
 import { aed } from "../lib/money";
 import { useI18n } from "./I18nProvider";
 
@@ -51,7 +52,7 @@ export default function PayslipDesk({ rows, employees }) {
           </div>
         </aside>
         <section className="desk-detail">
-          <form className="panel master-form" onSubmit={async (event) => { event.preventDefault(); await savePayslipAction(form); setDraft(null); router.refresh(); }}>
+          <form className="panel master-form" onSubmit={async (event) => { event.preventDefault(); await savePayslipAction(form); setDraft(null); flashSaved(); router.refresh(); }}>
             <h2>{form.id ? t.edit : t.newRecord}</h2>
             <div className="master-grid">
               <label>{t.month}<input type="month" value={String(form.month || "").slice(0, 7)} onChange={(event) => update("month", event.target.value)} /></label>

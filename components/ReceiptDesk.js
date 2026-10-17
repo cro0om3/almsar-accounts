@@ -104,6 +104,7 @@ export default function ReceiptDesk({ docs }) {
                   <div className="pair"><span>{t.againstInvoice}</span><b>{current.invoiceNumber || "—"}</b></div>
                   <div className="pair"><span>{t.paymentMethod}</span><b>{methods[current.method] || current.method}</b></div>
                   <div className="pair"><span>{t.referenceNo}</span><b className="ltr">{current.reference || "—"}</b></div>
+                  {current.filePath ? <div className="pair"><span>{t.receiptFile}</span><b><a href={`/api/receipt-files/${current.filePath}`} target="_blank" rel="noreferrer">{t.download}</a></b></div> : null}
                   <div className="sum-row total"><span>{t.receivedAmount}</span><b>{aed(current.amount)}</b></div>
                 </article>
               </div>

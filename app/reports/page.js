@@ -4,8 +4,8 @@ import { dashboard, listInvoices } from "../../lib/accounts";
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const data = await dashboard();
-  const rows = (await listInvoices())
+  const [data, invoices] = await Promise.all([dashboard(), listInvoices()]);
+  const rows = invoices
     .filter((row) => (Number(row.amountReceived) || 0) < (Number(row.total) || 0))
     .map((row) => ({
       id: row.id,

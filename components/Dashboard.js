@@ -10,15 +10,17 @@ import {
   Receipt,
   UserPlus,
   Users,
+  Wallet,
 } from "lucide-react";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
+import { can } from "../lib/permissions";
 
-export default function Dashboard({ data }) {
+export default function Dashboard({ data, session }) {
   const { t } = useI18n();
   const margin = data.revenue ? Math.round((data.profit / data.revenue) * 1000) / 10 : 0;
   return (
-    <>
+    <div className="home-stack">
       <section className="panel alerts-board">
         <h2>{t.alerts}</h2>
         <p className="lead">{t.alertWindow}</p>
@@ -27,8 +29,9 @@ export default function Dashboard({ data }) {
             {data.alerts.map((alert) => {
               const name = alert.vehicleType || "";
               const number = alert.vehicleNumber || "—";
-              return (
-                <Link className={`alert-line ${alert.expired ? "expired" : ""}`} key={`${alert.id}-${alert.kind}`} href={`/vehicles?id=${alert.id}`}>
+                const Tag = can(session, "vehicles") ? Link : "div";
+                return (
+                <Tag className={`alert-line ${alert.expired ? "expired" : ""}`} key={`${alert.id}-${alert.kind}`} {...(Tag === Link ? { href: `/vehicles?id=${alert.id}` } : {})}>
                   <span className="alert-who">
                     <b>{name || number}</b>
                     {name ? <small>{number}</small> : null}
@@ -37,7 +40,7 @@ export default function Dashboard({ data }) {
                     <span className="alert-kind">{alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}</span>
                     <em>{alert.expired ? t.expiredOn : t.expiresOn} {formatAlertDate(alert.date, t.dir)}</em>
                   </span>
-                </Link>
+                </Tag>
               );
             })}
           </div>
@@ -47,13 +50,18 @@ export default function Dashboard({ data }) {
       <section className="panel quick">
         <h2>{t.quickActions}</h2>
         <div className="actions">
-          <Link className="action blue" href="/quotes/new"><FilePlus2 size={22} />{t.newQuotation}</Link>
-          <Link className="action green" href="/invoices/new"><CreditCard size={22} />{t.newInvoice}</Link>
-          <Link className="action mint" href="/vehicles"><Car size={22} />{t.addVehicle}</Link>
-          <Link className="action violet" href="/customers"><UserPlus size={22} />{t.addCustomer}</Link>
-          <Link className="action lilac" href="/employees"><Users size={22} />{t.addEmployee}</Link>
-          <Link className="action pink" href="/invoices"><Receipt size={22} />{t.processPayment}</Link>
-          <Link className="action peach" href="/reports"><BarChart3 size={22} />{t.viewReports}</Link>
+          {[
+            ["/quotes/new", "quotes", "action blue", <FilePlus2 size={22} key="q" />, t.newQuotation],
+            ["/invoices/new", "invoices", "action green", <CreditCard size={22} key="i" />, t.newInvoice],
+            ["/vehicles", "vehicles", "action mint", <Car size={22} key="v" />, t.addVehicle],
+            ["/customers", "customers", "action violet", <UserPlus size={22} key="c" />, t.addCustomer],
+            ["/employees", "employees", "action lilac", <Users size={22} key="e" />, t.addEmployee],
+            ["/invoices", "invoices", "action pink", <Receipt size={22} key="p" />, t.processPayment],
+            ["/expenses", "expenses", "action sand", <Wallet size={22} key="x" />, t.addExpense],
+            ["/reports", "reports", "action peach", <BarChart3 size={22} key="r" />, t.viewReports],
+          ].filter(([, key]) => can(session, key)).map(([href, key, className, icon, label]) => (
+            <Link prefetch={false} className={className} href={href} key={key + href}>{icon}{label}</Link>
+          ))}
         </div>
       </section>
 
@@ -167,7 +175,7 @@ export default function Dashboard({ data }) {
           ))}
         </article>
       </section>
-    </>
+    </div>
   );
 }
 

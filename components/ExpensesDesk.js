@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, ImagePlus, Pencil, Search, Trash2, Wallet, X } from "lucide-react";
 import { deleteExpenseAction, saveExpenseAction } from "../app/actions";
+import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
 
@@ -123,6 +124,7 @@ export default function ExpensesDesk({ vehicles, general }) {
     }
     setForm(blankForm(mode === "general" ? form.category : "fuel"));
     if (fileRef.current) fileRef.current.value = "";
+    flashSaved();
     router.refresh();
   }
 

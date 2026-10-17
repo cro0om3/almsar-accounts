@@ -7,97 +7,120 @@ import { saveReceiptAction } from "../app/actions";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
 
+function cents(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function roomFor(invoice, saved) {
+  const raw = (Number(invoice.total) || 0) - (Number(invoice.amountReceived) || 0) + (Number(saved) || 0);
+  return Math.max(0, cents(raw));
+}
+
 export default function ReceiptForm({ doc, customers, invoices }) {
   const { t } = useI18n();
   const router = useRouter();
   const [header, setHeader] = useState(doc);
+  const [picked, setPicked] = useState(() => Object.fromEntries((doc.allocations || []).map((line) => [line.invoiceId, cents(line.amount).toFixed(2)])));
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState("");
+  const [clearFile, setClearFile] = useState(false);
   const [error, setError] = useState("");
+  const savedOnReceipt = useMemo(
+    () => Object.fromEntries((doc.allocations || []).map((line) => [line.invoiceId, Number(line.amount) || 0])),
+    [doc.allocations]
+  );
   const customer = useMemo(
     () => customers.find((row) => row.id === header.customerId) || null,
     [customers, header.customerId]
   );
+  const mine = useMemo(
+    () => invoices.filter((row) => row.customerId === header.customerId),
+    [invoices, header.customerId]
+  );
+  const openRows = useMemo(
+    () => mine.filter((row) => roomFor(row, savedOnReceipt[row.id]) > 0 || picked[row.id] != null),
+    [mine, picked, savedOnReceipt]
+  );
+  const outstanding = mine.reduce((sum, row) => sum + roomFor(row, savedOnReceipt[row.id]), 0);
+  const selected = openRows.filter((row) => picked[row.id] != null);
+  const paying = selected.reduce((sum, row) => sum + (Number(picked[row.id]) || 0), 0);
   const methods = [
     ["cash", t.methodCash],
     ["transfer", t.methodTransfer],
     ["cheque", t.methodCheque],
     ["card", t.methodCard],
   ];
+  const proofName = file?.name || (!clearFile && header.filePath ? header.filePath : "");
+  const proofUrl = preview || (!clearFile && header.filePath ? `/api/receipt-files/${header.filePath}` : "");
+  const proofPdf = /\.pdf$/i.test(proofName);
 
-  function chooseInvoice(invoiceId) {
-    const invoice = invoices.find((row) => row.id === invoiceId);
-    if (!invoice) {
-      setHeader((current) => ({ ...current, invoiceId: "", invoiceNumber: "" }));
-      return;
+  function chooseCustomer(customerId) {
+    setHeader((current) => ({ ...current, customerId }));
+    setPicked({});
+    setError("");
+  }
+
+  function toggleInvoice(invoice, on) {
+    setPicked((current) => {
+      const next = { ...current };
+      if (on) next[invoice.id] = roomFor(invoice, savedOnReceipt[invoice.id]).toFixed(2);
+      else delete next[invoice.id];
+      return next;
+    });
+  }
+
+  function selectOpen() {
+    const next = {};
+    for (const row of mine) {
+      const pending = roomFor(row, savedOnReceipt[row.id]);
+      if (pending > 0) next[row.id] = pending.toFixed(2);
     }
-    const pending = Math.max(0, (Number(invoice.total) || 0) - (Number(invoice.amountReceived) || 0));
-    setHeader((current) => ({
-      ...current,
-      invoiceId: invoice.id,
-      invoiceNumber: invoice.number || "",
-      customerId: invoice.customerId || current.customerId,
-      amount: current.amount === "" || Number(current.amount) === 0 ? pending.toFixed(2) : current.amount,
-    }));
+    setPicked(next);
   }
 
   async function onSave(event) {
     event.preventDefault();
-    if (!header.customerId || !(Number(header.amount) > 0)) {
+    const allocations = selected
+      .map((row) => ({ invoiceId: row.id, amount: Number(picked[row.id]) || 0 }))
+      .filter((line) => line.amount > 0);
+    if (!header.customerId || !allocations.length) {
       setError(t.receiptRequired);
       return;
     }
     setError("");
-    await saveReceiptAction(header);
+    const data = new FormData();
+    data.set("payload", JSON.stringify({ ...header, allocations, amount: paying }));
+    data.set("filePath", header.filePath || "");
+    data.set("clearFile", clearFile ? "1" : "");
+    if (file) data.set("file", file);
+    await saveReceiptAction(data);
   }
 
   return (
-    <form className="doc-form" onSubmit={onSave}>
+    <form className="receipt-page" onSubmit={onSave}>
       <div className="doc-top">
         <div>
           <h1>{header.id ? t.editReceipt : t.newReceipt}</h1>
-          <p>{t.receipts} {header.number}</p>
+          <p>{t.receipts} · {header.number}</p>
         </div>
       </div>
-      <div className="doc-grid">
-        <section className="panel details-panel">
-          <h2>{t.receiptDetails}</h2>
-          <div className="split" style={{ marginTop: 12 }}>
-            <label>{t.receiptNumber}
-              <input value={header.number} onChange={(event) => setHeader({ ...header, number: event.target.value })} />
-            </label>
-            <label>{t.date}
-              <input type="date" value={header.date} onChange={(event) => setHeader({ ...header, date: event.target.value })} />
-            </label>
-            <label>{t.againstInvoice}
-              <select value={header.invoiceId || ""} onChange={(event) => chooseInvoice(event.target.value)}>
-                <option value="">—</option>
-                {invoices.map((row) => <option key={row.id} value={row.id}>{row.number} · {row.customerName || ""}</option>)}
-              </select>
-            </label>
-            <label>{t.paymentMethod}
-              <select value={header.method || "cash"} onChange={(event) => setHeader({ ...header, method: event.target.value })}>
-                {methods.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </label>
-            <label>{t.referenceNo}
-              <input value={header.reference || ""} onChange={(event) => setHeader({ ...header, reference: event.target.value })} />
-            </label>
-          </div>
-          <label style={{ marginTop: 12 }}>{t.receiptNote}
-            <textarea rows={4} value={header.notes || ""} onChange={(event) => setHeader({ ...header, notes: event.target.value })} />
-          </label>
-        </section>
-
-        <section className="panel customer-panel">
-          <h2>{t.customer}</h2>
-          <label style={{ marginTop: 12 }}>{t.selectCustomer}
-            <select value={header.customerId || ""} onChange={(event) => setHeader({ ...header, customerId: event.target.value })}>
+      <div className="receipt-stats">
+        <div className="receipt-stat"><span>{t.openInvoices}</span><strong>{customer ? openRows.length : "—"}</strong></div>
+        <div className="receipt-stat"><span>{t.outstanding}</span><strong>{customer ? aed(outstanding) : "—"}</strong></div>
+        <div className="receipt-stat"><span>{t.selectedInvoices}</span><strong>{selected.length}</strong></div>
+        <div className="receipt-stat pay"><span>{t.thisPayment}</span><strong>{aed(paying)}</strong></div>
+      </div>
+      <div className="receipt-layout">
+        <section className="panel receipt-main">
+          <label>{t.selectCustomer}
+            <select value={header.customerId || ""} onChange={(event) => chooseCustomer(event.target.value)}>
               <option value="">{t.selectCustomer}</option>
               {customers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
             </select>
           </label>
           {customer ? (
             <div className="customer-box">
-              <b>{customer.name}</b>
+              <strong>{customer.name}</strong>
               <div className="meta">
                 <span>{t.email}</span><span>{customer.email || "—"}</span>
                 <span>{t.phone}</span><span>{customer.phone || "—"}</span>
@@ -105,23 +128,106 @@ export default function ReceiptForm({ doc, customers, invoices }) {
               </div>
             </div>
           ) : null}
-        </section>
-
-        <section className="panel summary-panel">
-          <h2>{t.summary}</h2>
-          <label style={{ marginTop: 12 }}>{t.receivedAmount}
-            <input type="number" min="0" step="0.01" value={header.amount} onChange={(event) => setHeader({ ...header, amount: event.target.value })} />
-          </label>
-          <div className="sum-row total"><span>{t.total}</span><b className="money">{aed(header.amount || 0)}</b></div>
-          {error ? <div className="errors">{error}</div> : null}
-          <div className="tool-row">
-            <button className="sq pdf" type="button" title="PDF" onClick={async () => { const { downloadReceipt } = await import("../lib/download-doc"); downloadReceipt(header, customer); }}><FileText size={16} /></button>
+          <div className="pick-head">
+            <div>
+              <h2>{t.pickInvoices}</h2>
+              <p>{customer ? t.receiptSplit : t.chooseCustomerFirst}</p>
+            </div>
+            {customer && openRows.length ? <button className="btn ghost" type="button" onClick={selectOpen}>{t.selectAllOpen}</button> : null}
           </div>
-          <div className="form-actions">
-            <button className="btn save" type="submit">{t.save}</button>
+          {!customer ? null : openRows.length === 0 ? <p>{t.noOpenInvoices}</p> : (
+            <div className="invoice-pick">
+              {openRows.map((row) => {
+                const on = picked[row.id] != null;
+                const room = roomFor(row, savedOnReceipt[row.id]);
+                return (
+                  <article className={on ? "on" : ""} key={row.id}>
+                    <input type="checkbox" checked={on} onChange={(event) => toggleInvoice(row, event.target.checked)} aria-label={row.number} />
+                    <div className="pick-copy">
+                      <strong>{row.number}</strong>
+                      <em>{String(row.date || "").slice(0, 10)}</em>
+                      <em>{t.due} {aed(room)}</em>
+                    </div>
+                    <label className="pick-amt">{t.receivedAmount}
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        disabled={!on}
+                        value={on ? picked[row.id] : ""}
+                        onChange={(event) => {
+                          const typed = event.target.value;
+                          if (typed === "") {
+                            setPicked({ ...picked, [row.id]: "" });
+                            return;
+                          }
+                          const next = Number(typed);
+                          setPicked({ ...picked, [row.id]: next > room ? room.toFixed(2) : typed });
+                        }}
+                      />
+                    </label>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+        <aside className="receipt-side">
+          <section className="panel">
+            <h2>{t.receiptDetails}</h2>
+            <div className="receipt-fields">
+              <label>{t.receiptNumber}
+                <input value={header.number} onChange={(event) => setHeader({ ...header, number: event.target.value })} />
+              </label>
+              <label>{t.date}
+                <input type="date" value={header.date} onChange={(event) => setHeader({ ...header, date: event.target.value })} />
+              </label>
+              <label>{t.paymentMethod}
+                <select value={header.method || "cash"} onChange={(event) => setHeader({ ...header, method: event.target.value })}>
+                  {methods.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </label>
+              <label>{t.referenceNo}
+                <input value={header.reference || ""} onChange={(event) => setHeader({ ...header, reference: event.target.value })} />
+              </label>
+            </div>
+            <label>{t.receiptNote}
+              <textarea rows={3} value={header.notes || ""} onChange={(event) => setHeader({ ...header, notes: event.target.value })} />
+            </label>
+            <div className="proof-box">
+              <span>{t.receiptFile}</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => {
+                const next = event.target.files?.[0] || null;
+                setFile(next);
+                setPreview(next ? URL.createObjectURL(next) : "");
+                setClearFile(false);
+              }} />
+              <em>{t.receiptHint}</em>
+              {proofUrl ? (
+                <div className="proof-row">
+                  {proofPdf ? <a className="pdf-chip" href={proofUrl} target="_blank" rel="noreferrer">{proofName}</a> : <img src={proofUrl} alt="" />}
+                  <button className="btn ghost" type="button" onClick={() => { setFile(null); setPreview(""); setClearFile(true); }}>{t.removePhoto}</button>
+                </div>
+              ) : null}
+            </div>
+          </section>
+          <section className="panel summary-panel">
+            <h2>{t.summary}</h2>
+            <div className="sum-row"><span>{t.outstanding}</span><strong>{customer ? aed(outstanding) : "—"}</strong></div>
+            <div className="sum-row"><span>{t.thisPayment}</span><strong>{aed(paying)}</strong></div>
+            <div className="sum-row total"><span>{t.stillDue}</span><strong>{customer ? aed(Math.max(0, outstanding - paying)) : "—"}</strong></div>
+            {error ? <div className="errors">{error}</div> : null}
+            <div className="form-actions">
+              <button className="sq pdf" type="button" title="PDF" onClick={async () => {
+                const { downloadReceipt } = await import("../lib/download-doc");
+                const numbers = selected.map((row) => row.number).filter(Boolean).join(", ");
+                downloadReceipt({ ...header, amount: paying, invoiceNumber: numbers }, customer);
+              }}><FileText size={16} /></button>
+              <button className="btn save" type="submit">{t.save}</button>
+            </div>
             <button className="cancel" type="button" onClick={() => router.push("/receipts")}>{t.cancel}</button>
-          </div>
-        </section>
+          </section>
+        </aside>
       </div>
     </form>
   );

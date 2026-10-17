@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Download, FileOutput, FileText, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { deleteInvoiceAction, deletePurchaseOrderAction, deleteQuoteAction, recordPaymentAction } from "../app/actions";
+import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
 
@@ -63,6 +64,7 @@ export default function DocDesk({ kind, docs }) {
     if (!current) return;
     await recordPaymentAction(current.id, amount);
     setPaying(false);
+    flashSaved();
     router.refresh();
   }
 

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, ImagePlus, Plus, Search, X } from "lucide-react";
 import { deleteMasterAction, saveMasterAction, saveVehicleAction } from "../app/actions";
+import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
 
 export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, initialId = "" }) {
@@ -83,6 +84,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     setPhoto({ file: null, preview: "", cleared: false });
     setSelectedId(id);
     setSaving(false);
+    flashSaved();
     router.refresh();
   }
 
