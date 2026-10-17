@@ -4,8 +4,8 @@ import { listVehicles } from "../../lib/accounts";
 
 export const dynamic = "force-dynamic";
 
-export default function VehicleDashboardPage() {
-  const vehicles = listVehicles().map((row) => ({
+export default async function VehicleDashboardPage() {
+  const vehicles = (await listVehicles()).map((row) => ({
     id: row.id,
     vehicleNumber: row.vehicleNumber || "",
     vehicleType: row.vehicleType || "",

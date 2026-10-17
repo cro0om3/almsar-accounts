@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { savePayslipAction } from "../app/actions";
+import { downloadPayslip } from "../lib/download-doc";
 import { aed } from "../lib/money";
 import { useI18n } from "./I18nProvider";
 
@@ -42,7 +43,7 @@ export default function PayslipDesk({ rows, employees }) {
           </div>
           <div className="desk-scroll">
             {rows.length === 0 ? <p className="desk-empty">{t.noRecords}</p> : rows.map((row) => (
-              <button key={row.id} type="button" className={row.id === form.id ? "doc-row on" : "doc-row"} onClick={() => { setDraft(null); setSelectedId(row.id); }}>
+              <button id={`pay-card-${row.id}`} key={row.id} type="button" className={row.id === form.id ? "doc-row on" : "doc-row"} onClick={() => { setDraft(null); setSelectedId(row.id); requestAnimationFrame(() => { document.getElementById(`pay-card-${row.id}`)?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }); }); }}>
                 <b>{row.employeeName || "—"}</b>
                 <small>{row.month}</small>
                 <strong>{aed(row.netPay)}</strong>
@@ -78,7 +79,10 @@ export default function PayslipDesk({ rows, employees }) {
               <label>{t.notes}<textarea value={form.notes || ""} onChange={(event) => update("notes", event.target.value)} /></label>
             </div>
             <div className="sum-row total"><span>{t.netPay}</span><b>{aed((Number(form.baseSalary) || 0) + (Number(form.overtimeHours) || 0) * (Number(form.overtimeRate) || 0) - (Number(form.deductions) || 0))}</b></div>
-            <button className="btn" type="submit">{t.save}</button>
+            <div className="detail-actions">
+              <button className="btn" type="submit">{t.save}</button>
+              {form.id ? <button className="btn ghost" type="button" onClick={() => downloadPayslip(form)}>{t.download}</button> : null}
+            </div>
           </form>
         </section>
       </div>

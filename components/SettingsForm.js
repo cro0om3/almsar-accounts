@@ -4,6 +4,17 @@ import { useState } from "react";
 import { saveSettingsAction } from "../app/actions";
 import { useI18n } from "./I18nProvider";
 
+function plainTerms(value) {
+  return String(value || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export default function SettingsForm({ settings }) {
   const { t } = useI18n();
   const [form, setForm] = useState({
@@ -13,7 +24,7 @@ export default function SettingsForm({ settings }) {
     footerContactEnglish: settings.footerContactEnglish || "",
     footerAddressEnglish: settings.footerAddressEnglish || "",
     currency: settings.currency || "AED",
-    defaultTerms: settings.defaultTerms || "",
+    defaultTerms: plainTerms(settings.defaultTerms),
   });
   const [saved, setSaved] = useState(false);
 
@@ -33,12 +44,12 @@ export default function SettingsForm({ settings }) {
           <label>{t.companyName}<input value={form.companyName} onChange={(event) => update("companyName", event.target.value)} /></label>
           <label>{t.vatNumber}<input value={form.vatNumber} onChange={(event) => update("vatNumber", event.target.value)} /></label>
           <label>{t.phone}<input value={form.footerContactEnglish} onChange={(event) => update("footerContactEnglish", event.target.value)} /></label>
-          <label>{t.address}<input value={form.footerAddressEnglish} onChange={(event) => update("footerAddressEnglish", event.target.value)} /></label>
+          <label>{t.footerAddress}<input value={form.footerAddressEnglish} onChange={(event) => update("footerAddressEnglish", event.target.value)} /></label>
           <label>{t.address}<textarea value={form.address} onChange={(event) => update("address", event.target.value)} /></label>
           <label>{t.defaultTerms}<textarea value={form.defaultTerms} onChange={(event) => update("defaultTerms", event.target.value)} /></label>
         </div>
         <button className="btn" type="submit">{t.save}</button>
-        {saved ? <span className="green"> {t.save}</span> : null}
+        {saved ? <span className="green"> {t.saved}</span> : null}
       </form>
     </div>
   );

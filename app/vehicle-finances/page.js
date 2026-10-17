@@ -3,6 +3,6 @@ import { financesForDesk } from "../../lib/accounts";
 
 export const dynamic = "force-dynamic";
 
-export default function VehicleFinancesPage() {
-  return <FinanceDesk vehicles={financesForDesk()} />;
+export default async function VehicleFinancesPage() {
+  return <FinanceDesk vehicles={await financesForDesk()} />;
 }

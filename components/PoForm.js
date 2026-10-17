@@ -6,6 +6,7 @@ import { FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { savePurchaseOrderAction } from "../app/actions";
 import { downloadExcel, downloadPdf, printDocument } from "../lib/download-doc";
 import { aed, recomputeLine, summarize } from "../lib/money";
+import { isFleetVehicle } from "../lib/vehicle-kind";
 import { useI18n } from "./I18nProvider";
 
 function freshLine() {
@@ -22,6 +23,7 @@ function freshLine() {
 
 export default function PoForm({ doc, vendors, vehicles }) {
   const { t } = useI18n();
+  const fleetVehicles = vehicles.filter(isFleetVehicle);
   const router = useRouter();
   const [header, setHeader] = useState({
     id: doc.id || "",
@@ -52,7 +54,7 @@ export default function PoForm({ doc, vendors, vehicles }) {
         <section className="panel">
           <h2>{t.purchaseOrders}</h2>
           <div className="split" style={{ marginTop: 12 }}>
-            <label>{t.invoiceNumber}<input value={header.number} onChange={(event) => setHeader({ ...header, number: event.target.value })} /></label>
+            <label>{t.poNumber}<input value={header.number} onChange={(event) => setHeader({ ...header, number: event.target.value })} /></label>
             <label>{t.date}<input type="date" value={header.date} onChange={(event) => setHeader({ ...header, date: event.target.value })} /></label>
             <label>{t.status}
               <select value={header.status} onChange={(event) => setHeader({ ...header, status: event.target.value })}>
@@ -98,7 +100,7 @@ export default function PoForm({ doc, vendors, vehicles }) {
                 <td>
                   <select value={line.vehicleNumber || ""} onChange={(event) => setItems((rows) => rows.map((item) => item.id === line.id ? recomputeLine({ ...item, vehicleNumber: event.target.value }) : item))}>
                     <option value="">—</option>
-                    {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.vehicleNumber}>{vehicle.vehicleNumber}</option>)}
+                    {fleetVehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.vehicleNumber}>{vehicle.vehicleNumber}</option>)}
                   </select>
                 </td>
                 <td><input value={line.description || ""} onChange={(event) => setItems((rows) => rows.map((item) => item.id === line.id ? { ...item, description: event.target.value } : item))} /></td>
@@ -117,6 +119,35 @@ export default function PoForm({ doc, vendors, vehicles }) {
             ))}
           </tbody>
         </table>
+        <div className="line-edit">
+          {items.map((line, index) => (
+            <article className="line-card" key={line.id}>
+              <div className="line-card-top">
+                <b>{index + 1}</b>
+                <button className="cancel" type="button" aria-label={t.delete} onClick={() => setItems((rows) => rows.filter((item) => item.id !== line.id))}>×</button>
+              </div>
+              <label>{t.vehicle}
+                <select value={line.vehicleNumber || ""} onChange={(event) => setItems((rows) => rows.map((item) => item.id === line.id ? recomputeLine({ ...item, vehicleNumber: event.target.value }) : item))}>
+                  <option value="">—</option>
+                  {fleetVehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.vehicleNumber}>{vehicle.vehicleNumber}</option>)}
+                </select>
+              </label>
+              <label>{t.description}<input value={line.description || ""} onChange={(event) => setItems((rows) => rows.map((item) => item.id === line.id ? { ...item, description: event.target.value } : item))} /></label>
+              <div className="line-grid">
+                <label>{t.basis}
+                  <select value={line.rentalBasis || ""} onChange={(event) => setItems((rows) => rows.map((item) => item.id === line.id ? { ...item, rentalBasis: event.target.value } : item))}>
+                    <option value="">—</option>
+                    <option value="hourly">{t.hourly}</option>
+                    <option value="monthly">{t.monthly}</option>
+                  </select>
+                </label>
+                <label>{t.qty}<input type="number" value={line.quantity} onChange={(event) => setItems((rows) => rows.map((item) => item.id === line.id ? recomputeLine({ ...item, quantity: event.target.value }) : item))} /></label>
+                <label>{t.rate}<input type="number" value={line.unitPrice} onChange={(event) => setItems((rows) => rows.map((item) => item.id === line.id ? recomputeLine({ ...item, unitPrice: event.target.value }) : item))} /></label>
+              </div>
+              <div className="sum-row total"><span>{t.net}</span><b>{aed(line.lineTotal)}</b></div>
+            </article>
+          ))}
+        </div>
         <button className="add-line" type="button" onClick={() => setItems((rows) => [...rows, freshLine()])}>+ {t.addLine}</button>
         <label style={{ marginTop: 12 }}>{t.terms}<textarea value={header.terms} onChange={(event) => setHeader({ ...header, terms: event.target.value })} /></label>
       </section>

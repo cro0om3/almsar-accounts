@@ -3,6 +3,6 @@ import { quotesForDesk } from "../../lib/accounts";
 
 export const dynamic = "force-dynamic";
 
-export default function QuotesPage() {
-  return <DocDesk kind="quote" docs={quotesForDesk()} />;
+export default async function QuotesPage() {
+  return <DocDesk kind="quote" docs={await quotesForDesk()} />;
 }

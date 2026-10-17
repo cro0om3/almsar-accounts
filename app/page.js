@@ -3,6 +3,6 @@ import { dashboard } from "../lib/accounts";
 
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
-  return <Dashboard data={dashboard()} />;
+export default async function HomePage() {
+  return <Dashboard data={await dashboard()} />;
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Wallet } from "lucide-react";
 import { useI18n } from "./I18nProvider";
+import { vehicleKind } from "../lib/vehicle-kind";
 import { aed } from "../lib/money";
 
 export default function FinanceDesk({ vehicles }) {
@@ -10,6 +11,7 @@ export default function FinanceDesk({ vehicles }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [profit, setProfit] = useState("all");
+  const [sort, setSort] = useState("profit");
   const [selectedId, setSelectedId] = useState("");
 
   const rows = useMemo(() => {
@@ -17,6 +19,7 @@ export default function FinanceDesk({ vehicles }) {
     return vehicles
       .filter((vehicle) => {
         const hay = `${vehicle.vehicleNumber} ${vehicle.vehicleType}`.toLowerCase();
+        if (vehicleKind(vehicle) === "record" && vehicle.transactions.length === 0) return false;
         if (text && !hay.includes(text)) return false;
         if (status !== "all" && vehicle.status !== status) return false;
         if (profit === "profit" && vehicle.profit <= 0) return false;
@@ -24,8 +27,8 @@ export default function FinanceDesk({ vehicles }) {
         if (profit === "none" && vehicle.transactions.length > 0) return false;
         return true;
       })
-      .sort((a, b) => b.profit - a.profit || a.vehicleNumber.localeCompare(b.vehicleNumber));
-  }, [vehicles, query, status, profit]);
+      .sort((a, b) => (sort === "name" ? a.vehicleNumber.localeCompare(b.vehicleNumber) : b.profit - a.profit || a.vehicleNumber.localeCompare(b.vehicleNumber)));
+  }, [vehicles, query, status, profit, sort]);
 
   const current = rows.find((vehicle) => vehicle.id === selectedId) || null;
 
@@ -40,6 +43,7 @@ export default function FinanceDesk({ vehicles }) {
               <Search size={16} />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchVehicle} />
             </label>
+            <div className="finance-filters">
             <label>{t.status}
               <select value={status} onChange={(event) => setStatus(event.target.value)}>
                 <option value="all">{t.allStatuses}</option>
@@ -54,10 +58,12 @@ export default function FinanceDesk({ vehicles }) {
               </select>
             </label>
             <label>{t.sortBy}
-              <select defaultValue="profit">
+              <select value={sort} onChange={(event) => setSort(event.target.value)}>
                 <option value="profit">{t.profitHigh}</option>
+                <option value="name">{t.nameSort}</option>
               </select>
             </label>
+            </div>
             <small>{rows.length} {t.vehiclesCount}</small>
           </header>
           <div className="desk-scroll">
@@ -65,8 +71,14 @@ export default function FinanceDesk({ vehicles }) {
               <button
                 key={vehicle.id}
                 type="button"
+                id={`finance-card-${vehicle.id}`}
                 className={vehicle.id === current?.id ? "finance-card on" : "finance-card"}
-                onClick={() => setSelectedId(vehicle.id)}
+                onClick={() => {
+                  setSelectedId(vehicle.id);
+                  requestAnimationFrame(() => {
+                    document.getElementById(`finance-card-${vehicle.id}`)?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+                  });
+                }}
               >
                 <b>{vehicle.vehicleNumber}</b>
                 <span>{vehicle.vehicleType || t.vehicle}</span>
@@ -78,7 +90,7 @@ export default function FinanceDesk({ vehicles }) {
         <section className="desk-detail">
           {!current ? (
             <div className="desk-blank">
-              <div className="blank-icon">•</div>
+              <div className="blank-icon"><Wallet size={28} /></div>
               <h2>{t.selectVehicle}</h2>
               <p>{t.viewFinance}</p>
             </div>
@@ -97,7 +109,7 @@ export default function FinanceDesk({ vehicles }) {
                 </div>
               ) : (
                 <>
-                  <div className="detail-cards">
+                  <div className="detail-cards three">
                     <article className="panel"><h3>{t.revenue}</h3><b>{aed(current.revenue)}</b></article>
                     <article className="panel"><h3>{t.expenses}</h3><b>{aed(current.expenses)}</b></article>
                     <article className="panel"><h3>{t.netProfit}</h3><b className="green">{aed(current.profit)}</b></article>

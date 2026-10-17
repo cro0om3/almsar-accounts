@@ -1,14 +1,24 @@
 import "./globals.css";
 import { I18nProvider } from "../components/I18nProvider";
 import Shell from "../components/Shell";
+import { vehicleAlerts } from "../lib/accounts";
 
 export const metadata = {
   title: "Almsar Alzaki | Accounts",
+  appleWebApp: { capable: true, title: "Almsar Accounts", statusBarStyle: "black-translucent" },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0e2744",
 };
 
 export const dynamic = "force-dynamic";
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const alerts = await vehicleAlerts();
   return (
     <html lang="en" dir="ltr">
       <head>
@@ -20,7 +30,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <I18nProvider>
-          <Shell>{children}</Shell>
+          <Shell alerts={alerts}>{children}</Shell>
         </I18nProvider>
       </body>
     </html>

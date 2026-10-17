@@ -3,6 +3,6 @@ import { invoicesForDesk } from "../../lib/accounts";
 
 export const dynamic = "force-dynamic";
 
-export default function InvoicesPage() {
-  return <DocDesk kind="invoice" docs={invoicesForDesk()} />;
+export default async function InvoicesPage() {
+  return <DocDesk kind="invoice" docs={await invoicesForDesk()} />;
 }

@@ -12,6 +12,7 @@ export default function FleetBoard({ vehicles }) {
     const buckets = new Map();
     for (const vehicle of vehicles) {
       const kind = vehicleKind(vehicle);
+      if (kind === "record") continue;
       const list = buckets.get(kind) || [];
       list.push(vehicle);
       buckets.set(kind, list);
@@ -25,7 +26,7 @@ export default function FleetBoard({ vehicles }) {
       <div className="fleet-filters">
         <button className={filter === "all" ? "on" : ""} type="button" onClick={() => setFilter("all")}>
           {t.allTypes}
-          <span>{vehicles.length}</span>
+          <span>{grouped.reduce((sum, [, rows]) => sum + rows.length, 0)}</span>
         </button>
         {grouped.map(([kind, rows]) => (
           <button key={kind} className={filter === kind ? "on" : ""} type="button" onClick={() => setFilter(kind)}>

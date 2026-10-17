@@ -13,6 +13,6 @@ const fields = [
   { key: "paymentTerms", label: "paymentTerms" },
 ];
 
-export default function VendorsPage() {
-  return <MasterDesk kind="vendors" titleKey="vendors" rows={listVendors()} fields={fields} labelKey="name" />;
+export default async function VendorsPage() {
+  return <MasterDesk kind="vendors" titleKey="vendors" rows={await listVendors()} fields={fields} labelKey="name" />;
 }

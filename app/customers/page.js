@@ -12,6 +12,6 @@ const fields = [
   { key: "trn", label: "trn" },
 ];
 
-export default function CustomersPage() {
-  return <MasterDesk kind="customers" titleKey="customers" rows={listCustomers()} fields={fields} labelKey="name" />;
+export default async function CustomersPage() {
+  return <MasterDesk kind="customers" titleKey="customers" rows={await listCustomers()} fields={fields} labelKey="name" />;
 }

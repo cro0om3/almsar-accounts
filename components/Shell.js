@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BarChart3,
+  Bell,
   Car,
   ChevronDown,
   Database,
@@ -18,26 +19,74 @@ import {
 } from "lucide-react";
 import { useI18n } from "./I18nProvider";
 
-export default function Shell({ children }) {
+function AlertsButton({ alerts, t }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bell-wrap">
+      <button className="icon-btn bell" type="button" aria-label={t.alerts} onClick={() => setOpen((value) => !value)}>
+        <Bell size={18} />
+        {alerts.length ? <span className="bell-count">{alerts.length}</span> : null}
+      </button>
+      {open ? (
+        <div className="notice-panel">
+          <b>{t.alerts}</b>
+          <p>{t.alertWindow}</p>
+          {alerts.length === 0 ? <p>{t.noAlerts}</p> : alerts.map((alert) => (
+            <Link key={`${alert.id}-${alert.kind}`} href={`/vehicles?id=${alert.id}`} onClick={() => setOpen(false)}>
+              <strong>{alert.vehicleNumber}</strong>
+              <span className={alert.expired ? "expired" : ""}>
+                {alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}
+                {" · "}
+                {alert.expired ? t.expiredOn : t.expiresOn}
+                {" "}
+                {alert.date}
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export default function Shell({ children, alerts = [] }) {
   const { t, toggle } = useI18n();
   const pathname = usePathname();
   const [open, setOpen] = useState(true);
+  const [drawer, setDrawer] = useState(false);
   const [docs, setDocs] = useState(true);
   const [masters, setMasters] = useState(
     ["/customers", "/vehicles", "/vendors", "/employees"].some((href) => pathname.startsWith(href))
   );
 
   useEffect(() => {
-    if (["/quotes", "/invoices", "/purchase-orders"].some((href) => pathname.startsWith(href))) setDocs(true);
+    if (["/quotes", "/invoices", "/purchase-orders", "/expenses"].some((href) => pathname.startsWith(href))) setDocs(true);
     if (["/customers", "/vehicles", "/vendors", "/employees"].some((href) => pathname.startsWith(href))) setMasters(true);
+    setDrawer(false);
   }, [pathname]);
+
+  function closeMenu() {
+    setDrawer(false);
+  }
 
   const active = (href) => pathname === href || (href !== "/" && pathname.startsWith(href));
 
   return (
-    <div className={`app ${open ? "is-open" : "is-collapsed"}`}>
+    <div className={`app ${open ? "is-open" : "is-collapsed"} ${drawer ? "menu-open" : ""}`}>
+      <header className="phone-bar">
+        <button className="icon-btn" type="button" onClick={() => setDrawer(true)} aria-label="Menu">
+          <Menu size={20} />
+        </button>
+        <b>{t.brand}</b>
+        <AlertsButton alerts={alerts} t={t} />
+        <button className="lang" type="button" onClick={toggle}>{t.language}</button>
+      </header>
+      {drawer ? <button className="backdrop" type="button" aria-label="Close" onClick={() => setDrawer(false)} /> : null}
       <aside className="side">
-        <button className="icon-btn menu-btn" type="button" onClick={() => setOpen((value) => !value)} aria-label="Menu">
+        <button className="icon-btn menu-btn" type="button" aria-label="Menu" onClick={() => {
+          if (window.matchMedia("(max-width: 800px)").matches) setDrawer(false);
+          else setOpen((value) => !value);
+        }}>
           <Menu size={18} />
         </button>
         <div className="logo-tile">
@@ -49,7 +98,7 @@ export default function Shell({ children }) {
             <span>{t.brandSub}</span>
           </div>
         ) : null}
-        <nav className="nav">
+        <nav className="nav" onClick={(event) => { if (event.target.closest("a")) closeMenu(); }}>
           <Link className={active("/") && pathname === "/" ? "active" : ""} href="/" title={t.home}>
             <Home size={18} />
             {open ? <span>{t.home}</span> : null}
@@ -72,6 +121,7 @@ export default function Shell({ children }) {
               <Link className={active("/quotes") ? "active" : ""} href="/quotes">{t.quotations}</Link>
               <Link className={active("/invoices") ? "active" : ""} href="/invoices">{t.invoices}</Link>
               <Link className={active("/purchase-orders") ? "active" : ""} href="/purchase-orders">{t.purchaseOrders}</Link>
+              <Link className={active("/expenses") ? "active" : ""} href="/expenses">{t.expensesMenu}</Link>
             </div>
           ) : null}
           <button className={`group ${masters ? "on" : ""}`} type="button" onClick={() => setMasters((value) => !value)}>
@@ -113,7 +163,10 @@ export default function Shell({ children }) {
           </div>
         </div>
       </aside>
-      <main className="main">{children}</main>
+      <main className="main">
+        <div className="notice-bar"><AlertsButton alerts={alerts} t={t} /></div>
+        {children}
+      </main>
     </div>
   );
 }

@@ -3,15 +3,32 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Download, FileOutput, Pencil, Plus, Trash2 } from "lucide-react";
+import { Download, FileOutput, FileText, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { deleteInvoiceAction, deletePurchaseOrderAction, deleteQuoteAction, recordPaymentAction } from "../app/actions";
 import { downloadPdf } from "../lib/download-doc";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
 
-function statusLabel(status, t) {
-  if (status === "invoice_sent") return t.sent;
+function basisLabel(value, t) {
+  if (value === "hourly") return t.hourly;
+  if (value === "monthly") return t.monthly;
+  return value || "—";
+}
+
+function termsHtml(value) {
+  const text = String(value || "").trim();
+  if (!text || text === "—" || text === "-") return "";
+  const safe = text.replace(/<script[\s\S]*?<\/script>/gi, "");
+  if (/<[a-z][\s\S]*>/i.test(safe)) return safe;
+  return safe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+}
+
+function statusLabel(status, t, kind) {
+  if (kind === "quote" && (!status || status === "active")) return t.draft;
+  if (status === "invoice_sent" || status === "sent") return t.sent;
   if (status === "payment_received") return t.paid;
+  if (status === "accepted") return t.accepted;
+  if (status === "declined") return t.declined;
   if (status === "draft") return t.draft;
   return t.active;
 }
@@ -75,8 +92,16 @@ export default function DocDesk({ kind, docs }) {
                 <button
                   key={doc.id}
                   type="button"
+                  id={`doc-card-${doc.id}`}
                   className={doc.id === current?.id ? "doc-row on" : "doc-row"}
-                  onClick={() => { setSelectedId(doc.id); setPaying(false); setAmount(String(doc.amountReceived || "")); }}
+                  onClick={() => {
+                    setSelectedId(doc.id);
+                    setPaying(false);
+                    setAmount(String(doc.amountReceived || ""));
+                    requestAnimationFrame(() => {
+                      document.getElementById(`doc-card-${doc.id}`)?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+                    });
+                  }}
                 >
                   <div className="doc-row-top">
                     <b>{doc.number}</b>
@@ -86,7 +111,7 @@ export default function DocDesk({ kind, docs }) {
                   <small>{doc.date}</small>
                   <div className="doc-row-meta">
                     {chip ? <em>{chip}</em> : null}
-                    {kind === "invoice" ? <span className="tag green">{statusLabel(doc.status, t)}</span> : null}
+                    {kind !== "po" ? <span className="tag green">{statusLabel(doc.status, t, kind)}</span> : null}
                   </div>
                   {kind === "invoice" && due > 0 ? <span className="due">{aed(due)} {t.due}</span> : null}
                 </button>
@@ -97,7 +122,7 @@ export default function DocDesk({ kind, docs }) {
         <section className="desk-detail">
           {!current ? (
             <div className="desk-blank">
-              <div className="blank-icon">DOC</div>
+              <div className="blank-icon"><FileText size={28} /></div>
               <h2>{kind === "po" ? t.noPoSelected : titles.title}</h2>
               <p>{kind === "po" ? t.selectPo : titles.lead}</p>
               {kind !== "po" ? null : <Link className="btn ghost" href="/purchase-orders/new">{t.createNewPo}</Link>}
@@ -108,20 +133,20 @@ export default function DocDesk({ kind, docs }) {
                 <div>
                   <h2>
                     {current.number}{" "}
-                    <span className={kind === "invoice" ? "tag green" : "tag mint"}>{statusLabel(current.status, t)}</span>
+                    <span className={kind === "invoice" ? "tag green" : "tag mint"}>{statusLabel(current.status, t, kind)}</span>
                   </h2>
                   <p>{current.customerName || current.vendorName} · {current.date}</p>
                 </div>
                 <div className="detail-actions">
-                  <button type="button" className="btn ghost" onClick={() => downloadPdf(kind, current, current.customer)}><Download size={15} /> {t.download}</button>
+                  <button type="button" className="btn ghost" aria-label={t.download} title={t.download} onClick={() => downloadPdf(kind, current, current.customer)}><Download size={18} /><span>{t.download}</span></button>
                   {kind === "quote" ? (
-                    <Link className="btn" href={`/invoices/new?fromQuote=${current.id}`}><FileOutput size={15} /> {t.convertToInvoice}</Link>
+                    <Link className="btn" href={`/invoices/new?fromQuote=${current.id}`} aria-label={t.convertToInvoice} title={t.convertToInvoice}><FileOutput size={18} /><span>{t.convertToInvoice}</span></Link>
                   ) : null}
                   {kind === "invoice" ? (
-                    <button type="button" className="btn ghost" onClick={() => setPaying((open) => !open)}>{t.recordPayment}</button>
+                    <button type="button" className="btn ghost" aria-label={t.recordPayment} title={t.recordPayment} onClick={() => setPaying((open) => !open)}><Wallet size={18} /><span>{t.recordPayment}</span></button>
                   ) : null}
-                  {kind !== "po" ? <Link className="btn ghost" href={`/${kind === "quote" ? "quotes" : "invoices"}/${current.id}`}><Pencil size={15} /> {t.edit}</Link> : <Link className="btn ghost" href={`/purchase-orders/${current.id}`}><Pencil size={15} /> {t.edit}</Link>}
-                  <button type="button" className="btn danger" onClick={() => remove(current.id)}><Trash2 size={15} /> {t.delete}</button>
+                  <Link className="btn ghost" href={kind === "quote" ? `/quotes/${current.id}` : kind === "invoice" ? `/invoices/${current.id}` : `/purchase-orders/${current.id}`} aria-label={t.edit} title={t.edit}><Pencil size={18} /><span>{t.edit}</span></Link>
+                  <button type="button" className="btn danger" aria-label={t.delete} title={t.delete} onClick={() => remove(current.id)}><Trash2 size={18} /><span>{t.delete}</span></button>
                 </div>
               </div>
               {paying ? (
@@ -154,7 +179,25 @@ export default function DocDesk({ kind, docs }) {
               </div>
               <article className="panel lines-card">
                 <h3>{t.lineItems}</h3>
-                <table>
+                <div className="line-cards">
+                  {(current.items || []).map((item, index) => (
+                    <article className="line-card" key={item.id || index}>
+                      <div className="line-card-top">
+                        <b>{index + 1}. {item.vehicleNumber || t.vehicle}</b>
+                        <strong className="money">{aed(item.lineTotal)}</strong>
+                      </div>
+                      <p>{item.description || "—"}</p>
+                      <div className="line-meta">
+                        <span>{t.basis}<b>{basisLabel(item.rentalBasis, t)}</b></span>
+                        <span>{t.qty}<b>{item.quantity}</b></span>
+                        <span>{t.rate}<b>{Number(item.unitPrice || 0).toFixed(2)}</b></span>
+                        <span>{t.taxPct}<b>{Number(item.taxPercent || 0).toFixed(0)}%</b></span>
+                        {kind === "invoice" ? <span>{t.received}<b>{aed(item.amountReceived || 0)}</b></span> : null}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                <table className="line-table">
                   <thead>
                     <tr>
                       <th>#</th><th>{t.vehicle}</th><th>{t.description}</th><th>{t.basis}</th>
@@ -182,7 +225,9 @@ export default function DocDesk({ kind, docs }) {
               </article>
               <article className="panel">
                 <h3>{t.terms}</h3>
-                <div className="terms-html" dangerouslySetInnerHTML={{ __html: String(current.terms || current.notes || "—").replace(/<script[\s\S]*?<\/script>/gi, "") }} />
+                {termsHtml(current.terms || current.notes) ? (
+                  <div className="terms-html" dangerouslySetInnerHTML={{ __html: termsHtml(current.terms || current.notes) }} />
+                ) : <p className="k">—</p>}
               </article>
             </>
           )}

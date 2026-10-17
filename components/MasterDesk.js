@@ -1,18 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
-import { deleteMasterAction, saveMasterAction } from "../app/actions";
+import { ImagePlus, Plus, Search, X } from "lucide-react";
+import { deleteMasterAction, saveMasterAction, saveVehicleAction } from "../app/actions";
 import { useI18n } from "./I18nProvider";
 
-export default function MasterDesk({ kind, titleKey, rows, fields, labelKey }) {
+export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, initialId = "" }) {
   const { t } = useI18n();
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(rows[0]?.id || "");
+  const [selectedId, setSelectedId] = useState(initialId || rows[0]?.id || "");
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [photo, setPhoto] = useState({ file: null, preview: "", cleared: false });
+  const fileRef = useRef(null);
 
   const visible = useMemo(() => {
     const text = query.trim().toLowerCase();
@@ -29,11 +32,19 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey }) {
     });
     setDraft(next);
     setSelectedId("");
+    setPhoto({ file: null, preview: "", cleared: false });
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   function choose(row) {
     setDraft(null);
+    setNotice("");
+    setPhoto({ file: null, preview: "", cleared: false });
+    if (fileRef.current) fileRef.current.value = "";
     setSelectedId(row.id);
+    requestAnimationFrame(() => {
+      document.getElementById(`master-card-${row.id}`)?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    });
   }
 
   function update(key, value) {
@@ -42,10 +53,26 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey }) {
 
   async function save(event) {
     event.preventDefault();
-    if (!current || !String(current[fields[0].key] || "").trim()) return;
+    const requiredKey = labelKey || fields[0].key;
+    if (!current || !String(current[requiredKey] || "").trim()) return;
     setSaving(true);
-    const id = await saveMasterAction(kind, current);
+    let id = current.id;
+    if (kind === "vehicles") {
+      const body = new FormData();
+      body.set("id", current.id || "");
+      for (const field of fields) {
+        if (field.file) continue;
+        body.set(field.key, current[field.key] || "");
+      }
+      body.set("ownershipPath", photo.cleared ? "" : (current.ownershipPath || ""));
+      if (photo.cleared) body.set("clearOwnership", "1");
+      if (photo.file) body.set("ownership", photo.file);
+      id = await saveVehicleAction(body);
+    } else {
+      id = await saveMasterAction(kind, current);
+    }
     setDraft(null);
+    setPhoto({ file: null, preview: "", cleared: false });
     setSelectedId(id);
     setSaving(false);
     router.refresh();
@@ -53,7 +80,12 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey }) {
 
   async function remove() {
     if (!current?.id || !window.confirm(t.delete)) return;
-    await deleteMasterAction(kind, current.id);
+    const result = await deleteMasterAction(kind, current.id);
+    if (result?.error === "inUse") {
+      setNotice(t.inUse);
+      return;
+    }
+    setNotice("");
     setDraft(null);
     setSelectedId("");
     router.refresh();
@@ -77,9 +109,9 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey }) {
           </label>
           <div className="desk-scroll">
             {visible.length === 0 ? <p className="desk-empty">{t.noRecords}</p> : visible.map((row) => (
-              <button key={row.id} type="button" className={row.id === current?.id && !draft ? "doc-row on" : "doc-row"} onClick={() => choose(row)}>
+              <button id={`master-card-${row.id}`} key={row.id} type="button" className={row.id === current?.id && !draft ? "doc-row on" : "doc-row"} onClick={() => choose(row)}>
                 <b>{row[labelKey] || "—"}</b>
-                <small>{row[fields[1]?.key] || ""}</small>
+                <small>{row[fields.find((field) => field.key !== labelKey && !field.file && !field.date && !field.long)?.key] || ""}</small>
               </button>
             ))}
           </div>
@@ -91,16 +123,45 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey }) {
             <form className="panel master-form" onSubmit={save}>
               <h2>{current[labelKey] || t.newRecord}</h2>
               <div className="master-grid">
-                {fields.map((field) => (
+                {fields.filter((field) => !field.file).map((field) => (
                   <label key={field.key}>{t[field.label] || field.label}
                     {field.long ? (
                       <textarea value={current[field.key] || ""} onChange={(event) => update(field.key, event.target.value)} />
+                    ) : field.options ? (
+                      <select value={current[field.key] || ""} onChange={(event) => update(field.key, event.target.value)}>
+                        <option value="">—</option>
+                        {field.options.map((value) => <option key={value} value={value}>{t[`kind_${value}`] || value}</option>)}
+                      </select>
                     ) : (
-                      <input type={field.number ? "number" : "text"} value={current[field.key] || ""} onChange={(event) => update(field.key, event.target.value)} />
+                      <input type={field.date ? "date" : field.number ? "number" : "text"} value={field.date ? String(current[field.key] || "").slice(0, 10) : (current[field.key] || "")} onChange={(event) => update(field.key, event.target.value)} />
                     )}
                   </label>
                 ))}
               </div>
+              {fields.some((field) => field.file) ? (
+                <label className="receipt-wrap">{t.ownershipPhoto}
+                  <span className="receipt-box">
+                    <ImagePlus size={18} />
+                    <span>{photo.file ? photo.file.name : t.receiptHint}</span>
+                    <input ref={fileRef} className="receipt-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      setPhoto({ file, preview: file ? URL.createObjectURL(file) : "", cleared: false });
+                    }} />
+                  </span>
+                </label>
+              ) : null}
+              {fields.some((field) => field.file) && (photo.preview || (!photo.cleared && current.ownershipPath)) ? (
+                <div className="receipt-chosen">
+                  <img className="receipt-preview" src={photo.preview || `/api/ownership/${current.ownershipPath}`} alt="" />
+                  <button className="btn ghost" type="button" onClick={() => {
+                    if (fileRef.current) fileRef.current.value = "";
+                    setPhoto({ file: null, preview: "", cleared: true });
+                  }}>
+                    <X size={16} /> {t.removePhoto}
+                  </button>
+                </div>
+              ) : null}
+              {notice ? <div className="errors">{notice}</div> : null}
               <div className="detail-actions">
                 <button className="btn" type="submit" disabled={saving}>{t.save}</button>
                 {current.id ? <button className="btn danger" type="button" onClick={remove}>{t.delete}</button> : null}
