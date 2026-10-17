@@ -1,13 +1,12 @@
 "use server";
 
-import fs from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { deleteStaff, saveStaff, assertPermission } from "../lib/access";
 import { deleteCompanyFile, deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, deleteReceipt, getSettings, recordPayment, saveBrandingPaths, saveCompanyFile, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveReceipt, saveSettings, saveVehicleExpense } from "../lib/accounts";
+import { deleteObject, putObject } from "../lib/object-store";
 
 async function allow(key) {
   const jar = await cookies();
@@ -63,12 +62,12 @@ export async function saveReceiptAction(formData) {
   const payload = JSON.parse(String(formData.get("payload") || "{}"));
   let filePath = String(formData.get("filePath") || "");
   if (formData.get("clearFile") === "1") {
-    removeReceiptFile(filePath);
+    await deleteObject("receipt-files", filePath);
     filePath = "";
   }
   const file = formData.get("file");
   if (file && typeof file !== "string" && file.size) {
-    removeReceiptFile(filePath);
+    await deleteObject("receipt-files", filePath);
     filePath = await storeReceiptFile(file);
   }
   const id = await saveReceipt({ ...payload, filePath });
@@ -81,7 +80,7 @@ export async function saveReceiptAction(formData) {
 export async function deleteReceiptAction(id) {
   await allow("receipts");
   const filePath = await deleteReceipt(id);
-  removeReceiptFile(filePath);
+  await deleteObject("receipt-files", filePath);
   revalidatePath("/receipts");
   revalidatePath("/invoices");
   revalidatePath("/");
@@ -103,21 +102,19 @@ export async function saveMasterAction(kind, payload) {
   return id;
 }
 
-const OWNERSHIP = path.join(process.cwd(), "data", "ownership");
+const IMAGE_TYPES = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "application/pdf": "pdf",
+};
 
-function removeOwnership(name) {
-  if (!name || !/^[\w.-]+$/.test(name)) return;
-  const file = path.join(OWNERSHIP, name);
-  if (fs.existsSync(file)) fs.rmSync(file);
-}
-
-async function storeOwnership(file) {
+async function storeOwned(folder, file, types = IMAGE_TYPES) {
   if (!file || typeof file === "string" || !file.size) return "";
-  const ext = IMAGE_TYPES[file.type];
+  const ext = types[file.type];
   if (!ext) throw new Error("File must be a JPG, PNG, WEBP, or PDF");
   const name = `${randomUUID()}.${ext}`;
-  fs.mkdirSync(OWNERSHIP, { recursive: true });
-  fs.writeFileSync(path.join(OWNERSHIP, name), Buffer.from(await file.arrayBuffer()));
+  await putObject(folder, name, Buffer.from(await file.arrayBuffer()), file.type);
   return name;
 }
 
@@ -126,12 +123,12 @@ export async function saveVehicleAction(formData) {
   let ownershipPath = String(formData.get("ownershipPath") || "");
   const file = formData.get("ownership");
   if (formData.get("clearOwnership") === "1") {
-    removeOwnership(ownershipPath);
+    await deleteObject("ownership", ownershipPath);
     ownershipPath = "";
   }
   if (file && typeof file !== "string" && file.size) {
-    removeOwnership(ownershipPath);
-    ownershipPath = await storeOwnership(file);
+    await deleteObject("ownership", ownershipPath);
+    ownershipPath = await storeOwned("ownership", file);
   }
   const id = await saveMaster("vehicles", {
     id: String(formData.get("id") || ""),
@@ -188,45 +185,12 @@ export async function deletePurchaseOrderAction(id) {
   revalidatePath("/");
 }
 
-const RECEIPTS = path.join(process.cwd(), "data", "receipts");
-const RECEIPT_FILES = path.join(process.cwd(), "data", "receipt-files");
-const IMAGE_TYPES = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "application/pdf": "pdf",
-};
-
-function removeReceipt(name) {
-  if (!name || !/^[\w.-]+$/.test(name)) return;
-  const file = path.join(RECEIPTS, name);
-  if (fs.existsSync(file)) fs.rmSync(file);
-}
-
 async function storeReceipt(file) {
-  if (!file || typeof file === "string" || !file.size) return "";
-  const ext = IMAGE_TYPES[file.type];
-  if (!ext) throw new Error("File must be a JPG, PNG, WEBP, or PDF");
-  const name = `${randomUUID()}.${ext}`;
-  fs.mkdirSync(RECEIPTS, { recursive: true });
-  fs.writeFileSync(path.join(RECEIPTS, name), Buffer.from(await file.arrayBuffer()));
-  return name;
-}
-
-function removeReceiptFile(name) {
-  if (!name || !/^[\w.-]+$/.test(name)) return;
-  const file = path.join(RECEIPT_FILES, name);
-  if (fs.existsSync(file)) fs.rmSync(file);
+  return storeOwned("receipts", file);
 }
 
 async function storeReceiptFile(file) {
-  if (!file || typeof file === "string" || !file.size) return "";
-  const ext = IMAGE_TYPES[file.type];
-  if (!ext) throw new Error("File must be a JPG, PNG, WEBP, or PDF");
-  const name = `${randomUUID()}.${ext}`;
-  fs.mkdirSync(RECEIPT_FILES, { recursive: true });
-  fs.writeFileSync(path.join(RECEIPT_FILES, name), Buffer.from(await file.arrayBuffer()));
-  return name;
+  return storeOwned("receipt-files", file);
 }
 
 export async function saveExpenseAction(formData) {
@@ -237,12 +201,12 @@ export async function saveExpenseAction(formData) {
   const kind = String(formData.get("kind") || "vehicle");
   let receiptPath = String(formData.get("receiptPath") || "");
   if (formData.get("clearReceipt") === "1") {
-    removeReceipt(receiptPath);
+    await deleteObject("receipts", receiptPath);
     receiptPath = "";
   }
   const file = formData.get("receipt");
   if (file && typeof file !== "string" && file.size) {
-    removeReceipt(receiptPath);
+    await deleteObject("receipts", receiptPath);
     receiptPath = await storeReceipt(file);
   }
   const input = {
@@ -269,30 +233,13 @@ export async function saveExpenseAction(formData) {
 export async function deleteExpenseAction(kind, id) {
   await allow("expenses");
   const receipt = await deleteExpense(kind, id);
-  removeReceipt(receipt);
+  await deleteObject("receipts", receipt);
   revalidatePath("/expenses");
   revalidatePath("/vehicle-finances");
   revalidatePath("/");
 }
 
-const BRANDING = path.join(process.cwd(), "data", "branding");
-const COMPANY_FILES = path.join(process.cwd(), "data", "company-files");
 const BRAND_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-
-function removeStored(dir, name) {
-  if (!name || !/^[\w.-]+$/.test(name)) return;
-  const file = path.join(dir, name);
-  if (fs.existsSync(file)) fs.rmSync(file);
-}
-
-async function storeImage(dir, file) {
-  const ext = BRAND_TYPES[file.type];
-  if (!ext) throw new Error("File must be a JPG, PNG, or WEBP");
-  const name = `${randomUUID()}.${ext}`;
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
-  return name;
-}
 
 export async function saveBrandingAction(formData) {
   await allow("settings");
@@ -305,13 +252,13 @@ export async function saveBrandingAction(formData) {
   for (const slot of ["logo", "seal", "signature"]) {
     const key = `${slot}Path`;
     if (formData.get(`clear${slot}`) === "1") {
-      removeStored(BRANDING, next[key]);
+      await deleteObject("branding", next[key]);
       next[key] = "";
     }
     const file = formData.get(slot);
     if (file && typeof file !== "string" && file.size) {
-      removeStored(BRANDING, next[key]);
-      next[key] = await storeImage(BRANDING, file);
+      await deleteObject("branding", next[key]);
+      next[key] = await storeOwned("branding", file, BRAND_TYPES);
     }
   }
   await saveBrandingPaths(next);
@@ -327,8 +274,7 @@ export async function saveCompanyFileAction(formData) {
   const ext = IMAGE_TYPES[file.type];
   if (!ext) return { error: "type" };
   const storedName = `${randomUUID()}.${ext}`;
-  fs.mkdirSync(COMPANY_FILES, { recursive: true });
-  fs.writeFileSync(path.join(COMPANY_FILES, storedName), Buffer.from(await file.arrayBuffer()));
+  await putObject("company-files", storedName, Buffer.from(await file.arrayBuffer()), file.type);
   await saveCompanyFile({
     title,
     category: String(formData.get("category") || "papers"),
@@ -344,7 +290,7 @@ export async function saveCompanyFileAction(formData) {
 export async function deleteCompanyFileAction(id) {
   await allow("files");
   const storedName = await deleteCompanyFile(id);
-  removeStored(COMPANY_FILES, storedName);
+  await deleteObject("company-files", storedName);
   revalidatePath("/files");
   revalidatePath("/settings");
 }
