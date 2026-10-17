@@ -32,7 +32,7 @@ function AlertsButton({ alerts, t }) {
           <b>{t.alerts}</b>
           <p>{t.alertWindow}</p>
           {alerts.length === 0 ? <p>{t.noAlerts}</p> : alerts.map((alert) => (
-            <Link key={`${alert.id}-${alert.kind}`} href={`/vehicles?id=${alert.id}`} onClick={() => setOpen(false)}>
+            <Link prefetch={false} key={`${alert.id}-${alert.kind}`} href={`/vehicles?id=${alert.id}`} onClick={() => setOpen(false)}>
               <strong>{alert.vehicleNumber}</strong>
               <span className={alert.expired ? "expired" : ""}>
                 {alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}
@@ -49,9 +49,10 @@ function AlertsButton({ alerts, t }) {
   );
 }
 
-export default function Shell({ children, alerts = [] }) {
+export default function Shell({ children }) {
   const { t, toggle } = useI18n();
   const pathname = usePathname();
+  const [alerts, setAlerts] = useState([]);
   const [open, setOpen] = useState(true);
   const [drawer, setDrawer] = useState(false);
   const [docs, setDocs] = useState(true);
@@ -63,6 +64,11 @@ export default function Shell({ children, alerts = [] }) {
     if (["/quotes", "/invoices", "/purchase-orders", "/expenses"].some((href) => pathname.startsWith(href))) setDocs(true);
     if (["/customers", "/vehicles", "/vendors", "/employees"].some((href) => pathname.startsWith(href))) setMasters(true);
     setDrawer(false);
+    let stop = false;
+    fetch("/api/alerts").then((response) => response.json()).then((rows) => {
+      if (!stop && Array.isArray(rows)) setAlerts(rows);
+    }).catch(() => {});
+    return () => { stop = true; };
   }, [pathname]);
 
   function closeMenu() {
@@ -99,15 +105,15 @@ export default function Shell({ children, alerts = [] }) {
           </div>
         ) : null}
         <nav className="nav" onClick={(event) => { if (event.target.closest("a")) closeMenu(); }}>
-          <Link className={active("/") && pathname === "/" ? "active" : ""} href="/" title={t.home}>
+          <Link prefetch={false} className={active("/") && pathname === "/" ? "active" : ""} href="/" title={t.home}>
             <Home size={18} />
             {open ? <span>{t.home}</span> : null}
           </Link>
-          <Link className={active("/vehicle-dashboard") ? "active" : ""} href="/vehicle-dashboard" title={t.vehicleDashboard}>
+          <Link prefetch={false} className={active("/vehicle-dashboard") ? "active" : ""} href="/vehicle-dashboard" title={t.vehicleDashboard}>
             <BarChart3 size={18} />
             {open ? <span>{t.vehicleDashboard}</span> : null}
           </Link>
-          <Link className={active("/vehicle-finances") ? "active" : ""} href="/vehicle-finances" title={t.vehicleFinances}>
+          <Link prefetch={false} className={active("/vehicle-finances") ? "active" : ""} href="/vehicle-finances" title={t.vehicleFinances}>
             <Car size={18} />
             {open ? <span>{t.vehicleFinances}</span> : null}
           </Link>
@@ -118,10 +124,10 @@ export default function Shell({ children, alerts = [] }) {
           </button>
           {open && docs ? (
             <div className="sub">
-              <Link className={active("/quotes") ? "active" : ""} href="/quotes">{t.quotations}</Link>
-              <Link className={active("/invoices") ? "active" : ""} href="/invoices">{t.invoices}</Link>
-              <Link className={active("/purchase-orders") ? "active" : ""} href="/purchase-orders">{t.purchaseOrders}</Link>
-              <Link className={active("/expenses") ? "active" : ""} href="/expenses">{t.expensesMenu}</Link>
+              <Link prefetch={false} className={active("/quotes") ? "active" : ""} href="/quotes">{t.quotations}</Link>
+              <Link prefetch={false} className={active("/invoices") ? "active" : ""} href="/invoices">{t.invoices}</Link>
+              <Link prefetch={false} className={active("/purchase-orders") ? "active" : ""} href="/purchase-orders">{t.purchaseOrders}</Link>
+              <Link prefetch={false} className={active("/expenses") ? "active" : ""} href="/expenses">{t.expensesMenu}</Link>
             </div>
           ) : null}
           <button className={`group ${masters ? "on" : ""}`} type="button" onClick={() => setMasters((value) => !value)}>
@@ -131,21 +137,21 @@ export default function Shell({ children, alerts = [] }) {
           </button>
           {open && masters ? (
             <div className="sub">
-              <Link className={active("/customers") ? "active" : ""} href="/customers">{t.customers}</Link>
-              <Link className={active("/vehicles") ? "active" : ""} href="/vehicles">{t.vehicles}</Link>
-              <Link className={active("/vendors") ? "active" : ""} href="/vendors">{t.vendors}</Link>
-              <Link className={active("/employees") ? "active" : ""} href="/employees">{t.employees}</Link>
+              <Link prefetch={false} className={active("/customers") ? "active" : ""} href="/customers">{t.customers}</Link>
+              <Link prefetch={false} className={active("/vehicles") ? "active" : ""} href="/vehicles">{t.vehicles}</Link>
+              <Link prefetch={false} className={active("/vendors") ? "active" : ""} href="/vendors">{t.vendors}</Link>
+              <Link prefetch={false} className={active("/employees") ? "active" : ""} href="/employees">{t.employees}</Link>
             </div>
           ) : null}
-          <Link className={active("/payslips") ? "active" : ""} href="/payslips" title={t.payslips}>
+          <Link prefetch={false} className={active("/payslips") ? "active" : ""} href="/payslips" title={t.payslips}>
             <Wallet size={18} />
             {open ? <span>{t.payslips}</span> : null}
           </Link>
-          <Link className={active("/reports") ? "active" : ""} href="/reports" title={t.reports}>
+          <Link prefetch={false} className={active("/reports") ? "active" : ""} href="/reports" title={t.reports}>
             <Receipt size={18} />
             {open ? <span>{t.reports}</span> : null}
           </Link>
-          <Link className={active("/settings") ? "active" : ""} href="/settings" title={t.settings}>
+          <Link prefetch={false} className={active("/settings") ? "active" : ""} href="/settings" title={t.settings}>
             <Settings size={18} />
             {open ? <span>{t.settings}</span> : null}
           </Link>

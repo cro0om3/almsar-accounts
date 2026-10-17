@@ -1,7 +1,15 @@
+import { IBM_Plex_Sans_Arabic, Inter } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "../components/I18nProvider";
 import Shell from "../components/Shell";
-import { vehicleAlerts } from "../lib/accounts";
+
+const latin = Inter({ subsets: ["latin"], variable: "--font-latin", display: "swap" });
+const arabic = IBM_Plex_Sans_Arabic({
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-arabic",
+  display: "swap",
+});
 
 export const metadata = {
   title: "Almsar Alzaki | Accounts",
@@ -15,22 +23,12 @@ export const viewport = {
   themeColor: "#0e2744",
 };
 
-export const dynamic = "force-dynamic";
-
-export default async function RootLayout({ children }) {
-  const alerts = await vehicleAlerts();
+export default function RootLayout({ children }) {
   return (
     <html lang="en" dir="ltr">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>
+      <body className={`${latin.variable} ${arabic.variable}`}>
         <I18nProvider>
-          <Shell alerts={alerts}>{children}</Shell>
+          <Shell>{children}</Shell>
         </I18nProvider>
       </body>
     </html>

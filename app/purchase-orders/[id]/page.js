@@ -5,7 +5,11 @@ export const dynamic = "force-dynamic";
 
 export default async function PurchaseOrderEditor({ params }) {
   const { id } = await params;
-  const doc = id === "new" ? await blankPurchaseOrder() : await getPurchaseOrder(id);
+  const [doc, vendors, vehicles] = await Promise.all([
+    id === "new" ? blankPurchaseOrder() : getPurchaseOrder(id),
+    listVendors(),
+    listVehicles(),
+  ]);
   if (!doc) return null;
-  return <PoForm doc={doc} vendors={await listVendors()} vehicles={await listVehicles()} />;
+  return <PoForm doc={doc} vendors={vendors} vehicles={vehicles} />;
 }

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Download, FileOutput, FileText, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { deleteInvoiceAction, deletePurchaseOrderAction, deleteQuoteAction, recordPaymentAction } from "../app/actions";
-import { downloadPdf } from "../lib/download-doc";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
 
@@ -138,7 +137,7 @@ export default function DocDesk({ kind, docs }) {
                   <p>{current.customerName || current.vendorName} · {current.date}</p>
                 </div>
                 <div className="detail-actions">
-                  <button type="button" className="btn ghost" aria-label={t.download} title={t.download} onClick={() => downloadPdf(kind, current, current.customer)}><Download size={18} /><span>{t.download}</span></button>
+                  <button type="button" className="btn ghost" aria-label={t.download} title={t.download} onClick={async () => { const { downloadPdf } = await import("../lib/download-doc"); downloadPdf(kind, current, current.customer); }}><Download size={18} /><span>{t.download}</span></button>
                   {kind === "quote" ? (
                     <Link className="btn" href={`/invoices/new?fromQuote=${current.id}`} aria-label={t.convertToInvoice} title={t.convertToInvoice}><FileOutput size={18} /><span>{t.convertToInvoice}</span></Link>
                   ) : null}

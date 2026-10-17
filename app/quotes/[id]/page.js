@@ -7,14 +7,12 @@ export const dynamic = "force-dynamic";
 export default async function QuoteEditorPage({ params, searchParams }) {
   const { id } = await params;
   const query = await searchParams;
-  const customers = await listCustomers();
-  const vehicles = await listVehicles();
-  const quotes = id === "new" ? await listQuotes() : [];
-  const doc = id === "new" && query.fromQuote
-    ? await quoteFromQuote(query.fromQuote)
-    : id === "new"
-      ? await blankQuote()
-      : await getQuote(id);
+  const [customers, vehicles, quotes, doc] = await Promise.all([
+    listCustomers(),
+    listVehicles(),
+    id === "new" ? listQuotes() : Promise.resolve([]),
+    id === "new" && query.fromQuote ? quoteFromQuote(query.fromQuote) : id === "new" ? blankQuote() : getQuote(id),
+  ]);
   if (!doc) notFound();
   return (
     <DocForm

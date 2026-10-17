@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { savePurchaseOrderAction } from "../app/actions";
-import { downloadExcel, downloadPdf, printDocument } from "../lib/download-doc";
 import { aed, recomputeLine, summarize } from "../lib/money";
 import { isFleetVehicle } from "../lib/vehicle-kind";
 import { useI18n } from "./I18nProvider";
@@ -81,9 +80,9 @@ export default function PoForm({ doc, vendors, vehicles }) {
           <div className="sum-row"><span>{t.tax}</span><b>{aed(totals.tax)}</b></div>
           <div className="sum-row total"><span>{t.total}</span><b>{aed(totals.total)}</b></div>
           <div className="tool-row">
-            <button className="sq pdf" type="button" title="PDF" onClick={() => downloadPdf("po", { ...payload(), customerName: vendor?.name }, vendor)}><FileText size={16} /></button>
-            <button className="sq xls" type="button" title="Excel" onClick={() => downloadExcel("po", { ...payload(), customerName: vendor?.name }, vendor)}><FileSpreadsheet size={16} /></button>
-            <button className="sq print" type="button" title="Print" onClick={() => printDocument("po", { ...payload(), customerName: vendor?.name }, vendor)}><Printer size={16} /></button>
+            <button className="sq pdf" type="button" title="PDF" onClick={async () => { const { downloadPdf } = await import("../lib/download-doc"); downloadPdf("po", { ...payload(), customerName: vendor?.name }, vendor); }}><FileText size={16} /></button>
+            <button className="sq xls" type="button" title="Excel" onClick={async () => { const { downloadExcel } = await import("../lib/download-doc"); downloadExcel("po", { ...payload(), customerName: vendor?.name }, vendor); }}><FileSpreadsheet size={16} /></button>
+            <button className="sq print" type="button" title="Print" onClick={async () => { const { printDocument } = await import("../lib/download-doc"); printDocument("po", { ...payload(), customerName: vendor?.name }, vendor); }}><Printer size={16} /></button>
           </div>
           <button className="btn save" type="submit" disabled={!header.vendorId}>{t.save}</button>
           <button className="cancel" type="button" onClick={() => router.push("/purchase-orders")}>{t.cancel}</button>

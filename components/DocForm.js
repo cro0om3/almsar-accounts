@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { saveInvoiceAction, saveQuoteAction } from "../app/actions";
-import { downloadExcel, downloadPdf, printDocument } from "../lib/download-doc";
 import { useI18n } from "./I18nProvider";
 import { aed, recomputeLine, summarize } from "../lib/money";
 import { isFleetVehicle } from "../lib/vehicle-kind";
@@ -260,9 +259,9 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
             </div>
           ) : null}
           <div className="tool-row">
-            <button className="sq pdf" type="button" title="PDF" onClick={() => downloadPdf(kind, exportPayload(), customer)}><FileText size={16} /></button>
-            <button className="sq xls" type="button" title="Excel" onClick={() => downloadExcel(kind, exportPayload(), customer)}><FileSpreadsheet size={16} /></button>
-            <button className="sq print" type="button" title="Print" onClick={() => printDocument(kind, exportPayload(), customer)}><Printer size={16} /></button>
+            <button className="sq pdf" type="button" title="PDF" onClick={async () => { const { downloadPdf } = await import("../lib/download-doc"); downloadPdf(kind, exportPayload(), customer); }}><FileText size={16} /></button>
+            <button className="sq xls" type="button" title="Excel" onClick={async () => { const { downloadExcel } = await import("../lib/download-doc"); downloadExcel(kind, exportPayload(), customer); }}><FileSpreadsheet size={16} /></button>
+            <button className="sq print" type="button" title="Print" onClick={async () => { const { printDocument } = await import("../lib/download-doc"); printDocument(kind, exportPayload(), customer); }}><Printer size={16} /></button>
           </div>
           <div className="form-actions">
             <button className="btn save" type="submit">{isInvoice ? t.saveInvoice : t.saveQuote}</button>

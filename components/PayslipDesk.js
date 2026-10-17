@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { savePayslipAction } from "../app/actions";
-import { downloadPayslip } from "../lib/download-doc";
 import { aed } from "../lib/money";
 import { useI18n } from "./I18nProvider";
 
@@ -81,7 +80,7 @@ export default function PayslipDesk({ rows, employees }) {
             <div className="sum-row total"><span>{t.netPay}</span><b>{aed((Number(form.baseSalary) || 0) + (Number(form.overtimeHours) || 0) * (Number(form.overtimeRate) || 0) - (Number(form.deductions) || 0))}</b></div>
             <div className="detail-actions">
               <button className="btn" type="submit">{t.save}</button>
-              {form.id ? <button className="btn ghost" type="button" onClick={() => downloadPayslip(form)}>{t.download}</button> : null}
+              {form.id ? <button className="btn ghost" type="button" onClick={async () => { const { downloadPayslip } = await import("../lib/download-doc"); downloadPayslip(form); }}>{t.download}</button> : null}
             </div>
           </form>
         </section>

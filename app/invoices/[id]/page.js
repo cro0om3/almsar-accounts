@@ -16,20 +16,14 @@ export const dynamic = "force-dynamic";
 export default async function InvoiceEditorPage({ params, searchParams }) {
   const { id } = await params;
   const query = await searchParams;
-  const customers = await listCustomers();
-  const vehicles = await listVehicles();
-  const quotes = await listQuotes();
-  const invoices = await listInvoices();
-  let doc;
-  if (id === "new" && query.fromQuote) {
-    doc = await invoiceFromQuote(query.fromQuote);
-  } else if (id === "new" && query.fromInvoice) {
-    doc = await invoiceFromInvoice(query.fromInvoice);
-  } else if (id === "new") {
-    doc = await blankInvoice();
-  } else {
-    doc = await getInvoice(id);
-  }
+  const copying = id === "new" && !query.fromQuote && !query.fromInvoice;
+  const [customers, vehicles, quotes, invoices, doc] = await Promise.all([
+    listCustomers(),
+    listVehicles(),
+    listQuotes(),
+    copying ? listInvoices() : Promise.resolve([]),
+    id === "new" && query.fromQuote ? invoiceFromQuote(query.fromQuote) : id === "new" && query.fromInvoice ? invoiceFromInvoice(query.fromInvoice) : id === "new" ? blankInvoice() : getInvoice(id),
+  ]);
   if (!doc) notFound();
   return (
     <DocForm
