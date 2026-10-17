@@ -5,7 +5,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, recordPayment, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveSettings, saveVehicleExpense } from "../lib/accounts";
+import { deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, deleteReceipt, recordPayment, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveReceipt, saveSettings, saveVehicleExpense } from "../lib/accounts";
 
 export async function createCustomerAction(formData) {
   const name = String(formData.get("name") || "").trim();
@@ -46,6 +46,21 @@ export async function recordPaymentAction(id, amount) {
   revalidatePath("/");
 }
 
+export async function saveReceiptAction(payload) {
+  const id = await saveReceipt(payload);
+  revalidatePath("/receipts");
+  revalidatePath("/invoices");
+  revalidatePath("/");
+  redirect(`/receipts/${id}`);
+}
+
+export async function deleteReceiptAction(id) {
+  await deleteReceipt(id);
+  revalidatePath("/receipts");
+  revalidatePath("/invoices");
+  revalidatePath("/");
+}
+
 export async function saveInvoiceAction(payload) {
   const id = await saveInvoice(payload);
   revalidatePath("/invoices");
@@ -71,7 +86,7 @@ function removeOwnership(name) {
 async function storeOwnership(file) {
   if (!file || typeof file === "string" || !file.size) return "";
   const ext = IMAGE_TYPES[file.type];
-  if (!ext) throw new Error("Receipt must be a JPG, PNG, or WEBP image");
+  if (!ext) throw new Error("File must be a JPG, PNG, WEBP, or PDF");
   const name = `${randomUUID()}.${ext}`;
   fs.mkdirSync(OWNERSHIP, { recursive: true });
   fs.writeFileSync(path.join(OWNERSHIP, name), Buffer.from(await file.arrayBuffer()));
@@ -144,6 +159,7 @@ const IMAGE_TYPES = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
+  "application/pdf": "pdf",
 };
 
 function removeReceipt(name) {
@@ -155,7 +171,7 @@ function removeReceipt(name) {
 async function storeReceipt(file) {
   if (!file || typeof file === "string" || !file.size) return "";
   const ext = IMAGE_TYPES[file.type];
-  if (!ext) throw new Error("Receipt must be a JPG, PNG, or WEBP image");
+  if (!ext) throw new Error("File must be a JPG, PNG, WEBP, or PDF");
   const name = `${randomUUID()}.${ext}`;
   fs.mkdirSync(RECEIPTS, { recursive: true });
   fs.writeFileSync(path.join(RECEIPTS, name), Buffer.from(await file.arrayBuffer()));
@@ -167,8 +183,18 @@ export async function saveExpenseAction(formData) {
   const amount = Number(formData.get("amount") || 0);
   if (!description || amount <= 0) return { error: "required" };
   const kind = String(formData.get("kind") || "vehicle");
-  const receiptPath = await storeReceipt(formData.get("receipt"));
+  let receiptPath = String(formData.get("receiptPath") || "");
+  if (formData.get("clearReceipt") === "1") {
+    removeReceipt(receiptPath);
+    receiptPath = "";
+  }
+  const file = formData.get("receipt");
+  if (file && typeof file !== "string" && file.size) {
+    removeReceipt(receiptPath);
+    receiptPath = await storeReceipt(file);
+  }
   const input = {
+    id: String(formData.get("id") || ""),
     description,
     amount,
     date: String(formData.get("date") || ""),

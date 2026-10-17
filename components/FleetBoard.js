@@ -45,8 +45,8 @@ export default function FleetBoard({ vehicles }) {
                   <VehicleArt kind={kind} />
                 </div>
                 <div className="fleet-body">
-                  <b>{vehicle.vehicleNumber}</b>
-                  <p>{vehicle.vehicleType || t[`kind_${kind}`]}</p>
+                  <b>{vehicle.vehicleType || t[`kind_${kind}`]}</b>
+                  <p>{vehicle.vehicleNumber}</p>
                   <em>{vehicle.status === "active" ? t.active : vehicle.status}</em>
                 </div>
               </article>

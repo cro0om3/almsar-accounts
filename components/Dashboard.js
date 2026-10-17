@@ -22,13 +22,26 @@ export default function Dashboard({ data }) {
       <section className="panel alerts-board">
         <h2>{t.alerts}</h2>
         <p className="lead">{t.alertWindow}</p>
-        {data.alerts?.length ? data.alerts.map((alert) => (
-          <Link className={`alert-line ${alert.expired ? "expired" : ""}`} key={`${alert.id}-${alert.kind}`} href={`/vehicles?id=${alert.id}`}>
-            <b>{alert.vehicleNumber}</b>
-            <span>{alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}</span>
-            <em>{alert.expired ? t.expiredOn : t.expiresOn} {alert.date}</em>
-          </Link>
-        )) : <p>{t.noAlerts}</p>}
+        {data.alerts?.length ? (
+          <div className="alerts-list">
+            {data.alerts.map((alert) => {
+              const name = alert.vehicleType || "";
+              const number = alert.vehicleNumber || "—";
+              return (
+                <Link className={`alert-line ${alert.expired ? "expired" : ""}`} key={`${alert.id}-${alert.kind}`} href={`/vehicles?id=${alert.id}`}>
+                  <span className="alert-who">
+                    <b>{name || number}</b>
+                    {name ? <small>{number}</small> : null}
+                  </span>
+                  <span className="alert-when">
+                    <span className="alert-kind">{alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}</span>
+                    <em>{alert.expired ? t.expiredOn : t.expiresOn} {formatAlertDate(alert.date, t.dir)}</em>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        ) : <p>{t.noAlerts}</p>}
       </section>
 
       <section className="panel quick">
@@ -156,6 +169,13 @@ export default function Dashboard({ data }) {
       </section>
     </>
   );
+}
+
+function formatAlertDate(value, dir) {
+  const text = String(value || "").slice(0, 10);
+  const date = new Date(`${text}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return text;
+  return new Intl.DateTimeFormat(dir === "rtl" ? "ar" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

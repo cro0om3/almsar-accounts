@@ -8,6 +8,13 @@ import { useI18n } from "./I18nProvider";
 import { aed, recomputeLine, summarize } from "../lib/money";
 import { isFleetVehicle } from "../lib/vehicle-kind";
 
+function vehicleChoice(vehicle, isInvoice) {
+  const name = vehicle.vehicleType || "";
+  const number = vehicle.vehicleNumber || "";
+  if (isInvoice) return [number, name].filter(Boolean).join(" · ") || number;
+  return name || number;
+}
+
 function freshLine() {
   return recomputeLine({
     id: crypto.randomUUID(),
@@ -318,7 +325,7 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
                 {columns.vehicle ? <td>
                   <select value={line.vehicleNumber || ""} onChange={(event) => patchLine(line.id, "vehicleNumber", event.target.value)}>
                     <option value="">—</option>
-                    {fleetVehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.vehicleNumber}>{vehicle.vehicleNumber}</option>)}
+                    {fleetVehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.vehicleNumber}>{vehicleChoice(vehicle, isInvoice)}</option>)}
                   </select>
                 </td> : null}
                 {columns.description ? <td><input value={line.description || ""} onChange={(event) => patchLine(line.id, "description", event.target.value)} /></td> : null}
@@ -350,7 +357,7 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
               {columns.vehicle ? <label>{t.vehicle}
                 <select value={line.vehicleNumber || ""} onChange={(event) => patchLine(line.id, "vehicleNumber", event.target.value)}>
                   <option value="">—</option>
-                  {fleetVehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.vehicleNumber}>{vehicle.vehicleNumber}</option>)}
+                  {fleetVehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.vehicleNumber}>{vehicleChoice(vehicle, isInvoice)}</option>)}
                 </select>
               </label> : null}
               {columns.description ? <label>{t.description}<input value={line.description || ""} onChange={(event) => patchLine(line.id, "description", event.target.value)} /></label> : null}

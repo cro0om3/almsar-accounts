@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-const TYPES = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
+const TYPES = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".pdf": "application/pdf" };
 
 export async function GET(_request, { params }) {
   const { name } = await params;

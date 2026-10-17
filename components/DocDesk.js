@@ -86,7 +86,10 @@ export default function DocDesk({ kind, docs }) {
               </div>
             ) : docs.map((doc) => {
               const due = Math.max(0, Number(doc.total || 0) - Number(doc.amountReceived || 0));
-              const chip = doc.items?.[0]?.vehicleNumber || doc.items?.[0]?.vehicleTypeLabel || "";
+              const first = doc.items?.[0];
+              const chip = kind === "invoice"
+                ? [first?.vehicleNumber, first?.vehicleTypeLabel].filter(Boolean).join(" · ")
+                : (first?.vehicleTypeLabel || first?.vehicleNumber || "");
               return (
                 <button
                   key={doc.id}
@@ -182,7 +185,7 @@ export default function DocDesk({ kind, docs }) {
                   {(current.items || []).map((item, index) => (
                     <article className="line-card" key={item.id || index}>
                       <div className="line-card-top">
-                        <b>{index + 1}. {item.vehicleNumber || t.vehicle}</b>
+                        <b>{index + 1}. {kind === "invoice" ? [item.vehicleNumber, item.vehicleTypeLabel].filter(Boolean).join(" · ") || t.vehicle : (item.vehicleTypeLabel || item.vehicleNumber || t.vehicle)}</b>
                         <strong className="money">{aed(item.lineTotal)}</strong>
                       </div>
                       <p>{item.description || "—"}</p>
@@ -208,7 +211,7 @@ export default function DocDesk({ kind, docs }) {
                     {(current.items || []).map((item, index) => (
                       <tr key={item.id || index}>
                         <td>{index + 1}</td>
-                        <td>{item.vehicleNumber || "—"}</td>
+                        <td>{kind === "invoice" ? [item.vehicleNumber, item.vehicleTypeLabel].filter(Boolean).join(" · ") || "—" : (item.vehicleTypeLabel || item.vehicleNumber || "—")}</td>
                         <td>{item.description || "—"}</td>
                         <td>{item.rentalBasis || "—"}</td>
                         <td>{item.quantity}</td>

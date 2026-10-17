@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, Plus, Search, X } from "lucide-react";
+import { FileText, ImagePlus, Plus, Search, X } from "lucide-react";
 import { deleteMasterAction, saveMasterAction, saveVehicleAction } from "../app/actions";
 import { useI18n } from "./I18nProvider";
 
@@ -24,6 +24,14 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
   }, [rows, query, fields]);
 
   const current = draft || visible.find((row) => row.id === selectedId) || visible[0] || null;
+
+  function rowLines(row) {
+    if (kind === "vehicles") {
+      return { primary: row.vehicleType || "—", secondary: row.vehicleNumber || "" };
+    }
+    const subtitle = fields.find((field) => field.key !== labelKey && !field.file && !field.date && !field.long);
+    return { primary: row[labelKey] || "—", secondary: subtitle ? (row[subtitle.key] || "") : "" };
+  }
 
   function blank() {
     const next = { id: "" };
@@ -108,12 +116,15 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.search} />
           </label>
           <div className="desk-scroll">
-            {visible.length === 0 ? <p className="desk-empty">{t.noRecords}</p> : visible.map((row) => (
-              <button id={`master-card-${row.id}`} key={row.id} type="button" className={row.id === current?.id && !draft ? "doc-row on" : "doc-row"} onClick={() => choose(row)}>
-                <b>{row[labelKey] || "—"}</b>
-                <small>{row[fields.find((field) => field.key !== labelKey && !field.file && !field.date && !field.long)?.key] || ""}</small>
-              </button>
-            ))}
+            {visible.length === 0 ? <p className="desk-empty">{t.noRecords}</p> : visible.map((row) => {
+              const lines = rowLines(row);
+              return (
+                <button id={`master-card-${row.id}`} key={row.id} type="button" className={row.id === current?.id && !draft ? "doc-row on" : "doc-row"} onClick={() => choose(row)}>
+                  <b>{lines.primary}</b>
+                  <small>{lines.secondary}</small>
+                </button>
+              );
+            })}
           </div>
         </aside>
         <section className="desk-detail">
@@ -124,7 +135,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
               <h2>{current[labelKey] || t.newRecord}</h2>
               <div className="master-grid">
                 {fields.filter((field) => !field.file).map((field) => (
-                  <label key={field.key}>{t[field.label] || field.label}
+                  <label key={field.key} className={field.long ? "span-2" : undefined}>{t[field.label] || field.label}
                     {field.long ? (
                       <textarea value={current[field.key] || ""} onChange={(event) => update(field.key, event.target.value)} />
                     ) : field.options ? (
@@ -143,16 +154,20 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                   <span className="receipt-box">
                     <ImagePlus size={18} />
                     <span>{photo.file ? photo.file.name : t.receiptHint}</span>
-                    <input ref={fileRef} className="receipt-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
+                    <input ref={fileRef} className="receipt-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => {
                       const file = event.target.files?.[0] || null;
                       setPhoto({ file, preview: file ? URL.createObjectURL(file) : "", cleared: false });
                     }} />
                   </span>
                 </label>
               ) : null}
-              {fields.some((field) => field.file) && (photo.preview || (!photo.cleared && current.ownershipPath)) ? (
+              {fields.some((field) => field.file) && (photo.preview || photo.file || (!photo.cleared && current.ownershipPath)) ? (
                 <div className="receipt-chosen">
-                  <img className="receipt-preview" src={photo.preview || `/api/ownership/${current.ownershipPath}`} alt="" />
+                  {(photo.file?.type === "application/pdf" || /\.pdf$/i.test(photo.file?.name || "") || (!photo.file && /\.pdf$/i.test(current.ownershipPath || ""))) ? (
+                    <a className="pdf-chip" href={photo.preview || `/api/ownership/${current.ownershipPath}`} target="_blank" rel="noreferrer"><FileText size={16} /> PDF</a>
+                  ) : (
+                    <img className="receipt-preview" src={photo.preview || `/api/ownership/${current.ownershipPath}`} alt="" />
+                  )}
                   <button className="btn ghost" type="button" onClick={() => {
                     if (fileRef.current) fileRef.current.value = "";
                     setPhoto({ file: null, preview: "", cleared: true });

@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, Search, Trash2, Wallet, X } from "lucide-react";
+import { FileText, ImagePlus, Pencil, Search, Trash2, Wallet, X } from "lucide-react";
 import { deleteExpenseAction, saveExpenseAction } from "../app/actions";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
@@ -23,7 +23,11 @@ function today() {
 }
 
 function blankForm(category) {
-  return { description: "", amount: "", date: today(), category, notes: "", receipt: null, preview: "" };
+  return { id: "", description: "", amount: "", date: today(), category, notes: "", receipt: null, preview: "", receiptPath: "", clearReceipt: false };
+}
+
+function isPdf(file, path) {
+  return file?.type === "application/pdf" || /\.pdf$/i.test(file?.name || "") || /\.pdf$/i.test(path || "");
 }
 
 export default function ExpensesDesk({ vehicles, general }) {
@@ -99,8 +103,11 @@ export default function ExpensesDesk({ vehicles, general }) {
     }
     if (mode === "vehicle" && !currentVehicle) return;
     const body = new FormData();
+    body.set("id", form.id || "");
     body.set("kind", mode);
     body.set("vehicleId", currentVehicle?.id || "");
+    body.set("receiptPath", form.clearReceipt ? "" : (form.receiptPath || ""));
+    if (form.clearReceipt) body.set("clearReceipt", "1");
     body.set("description", form.description.trim());
     body.set("amount", form.amount);
     body.set("date", form.date);
@@ -114,8 +121,28 @@ export default function ExpensesDesk({ vehicles, general }) {
       setError(t.requiredExpense);
       return;
     }
-    setForm(blankForm(mode === "general" ? "rent" : "fuel"));
+    setForm(blankForm(mode === "general" ? form.category : "fuel"));
+    if (fileRef.current) fileRef.current.value = "";
     router.refresh();
+  }
+
+  function edit(row) {
+    const category = LEGACY[row.category] || row.category || (mode === "general" ? "rent" : "fuel");
+    setForm({
+      id: row.id,
+      description: row.description || "",
+      amount: String(row.amount ?? ""),
+      date: row.date || today(),
+      category: labels[category] ? category : "other",
+      notes: row.notes || "",
+      receipt: null,
+      preview: "",
+      receiptPath: row.receiptPath || "",
+      clearReceipt: false,
+    });
+    if (fileRef.current) fileRef.current.value = "";
+    if (mode === "general") setGeneralId(row.id);
+    document.querySelector(".expense-form")?.scrollIntoView({ block: "start", behavior: "smooth" });
   }
 
   async function remove(kind, id) {
@@ -151,8 +178,8 @@ export default function ExpensesDesk({ vehicles, general }) {
                 const selected = mode === "vehicle" && vehicle.id === currentVehicle?.id;
                 return (
                   <button id={`vehicle-card-${vehicle.id}`} key={vehicle.id} type="button" className={selected ? "finance-card on" : "finance-card"} onClick={() => openVehicle(vehicle.id)}>
-                    <b>{vehicle.vehicleNumber}</b>
-                    <span>{vehicle.vehicleType || t.vehicle}</span>
+                    <b>{vehicle.vehicleType || t.vehicle}</b>
+                    <span>{vehicle.vehicleNumber}</span>
                     {vehicle.expenses.length ? <strong>{aed(total)}</strong> : <em>{t.noExpenses}</em>}
                   </button>
                 );
@@ -171,13 +198,13 @@ export default function ExpensesDesk({ vehicles, general }) {
             <>
               <div className="detail-top">
                 <div>
-                  <h2>{mode === "vehicle" ? currentVehicle.vehicleNumber : t.generalExpenses}</h2>
-                  <p>{mode === "vehicle" ? currentVehicle.vehicleType || t.vehicle : t.generalLead}</p>
+                  <h2>{mode === "vehicle" ? (currentVehicle.vehicleType || t.vehicle) : t.generalExpenses}</h2>
+                  <p>{mode === "vehicle" ? currentVehicle.vehicleNumber : t.generalLead}</p>
                 </div>
                 <b className="money">{t.spent}: {aed(spent)}</b>
               </div>
               <form className="panel expense-form" onSubmit={onSubmit}>
-                <h3>{t.addExpense}</h3>
+                <h3>{form.id ? t.edit : t.addExpense}</h3>
                 <div className="master-grid">
                   <label>{t.description}
                     <input value={form.description} onChange={(event) => update("description", event.target.value)} placeholder={t.expenseDetails} />
@@ -200,19 +227,23 @@ export default function ExpensesDesk({ vehicles, general }) {
                     <span className="receipt-box">
                       <ImagePlus size={18} />
                       <span>{form.receipt ? form.receipt.name : t.receiptHint}</span>
-                      <input ref={fileRef} className="receipt-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
+                      <input ref={fileRef} className="receipt-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => {
                         const file = event.target.files?.[0] || null;
-                        setForm((current) => ({ ...current, receipt: file, preview: file ? URL.createObjectURL(file) : "" }));
+                        setForm((current) => ({ ...current, receipt: file, preview: file ? URL.createObjectURL(file) : "", clearReceipt: false }));
                       }} />
                     </span>
                   </label>
                 </div>
-                {form.preview ? (
+                {(form.preview || (form.receiptPath && !form.clearReceipt) || form.receipt) ? (
                   <div className="receipt-chosen">
-                    <img className="receipt-preview" src={form.preview} alt="" />
+                    {isPdf(form.receipt, form.receiptPath) ? (
+                      <a className="pdf-chip" href={form.preview || `/api/receipts/${form.receiptPath}`} target="_blank" rel="noreferrer"><FileText size={16} /> PDF</a>
+                    ) : (
+                      <img className="receipt-preview" src={form.preview || `/api/receipts/${form.receiptPath}`} alt="" />
+                    )}
                     <button className="btn ghost" type="button" onClick={() => {
                       if (fileRef.current) fileRef.current.value = "";
-                      setForm((current) => ({ ...current, receipt: null, preview: "" }));
+                      setForm((current) => ({ ...current, receipt: null, preview: "", receiptPath: "", clearReceipt: true }));
                     }}>
                       <X size={16} /> {t.removePhoto}
                     </button>
@@ -224,13 +255,20 @@ export default function ExpensesDesk({ vehicles, general }) {
               <div className="expense-list">
                 {history.length === 0 ? <p className="desk-empty">{mode === "vehicle" ? t.noExpenses : t.noGeneral}</p> : history.map((row) => (
                   <article className={`expense-row ${row.id === currentGeneral?.id ? "on" : ""}`} key={row.id}>
-                    {row.receiptPath ? <img src={`/api/receipts/${row.receiptPath}`} alt="" /> : <span className="receipt-empty"><ImagePlus size={16} /></span>}
+                    {row.receiptPath ? (
+                      isPdf(null, row.receiptPath)
+                        ? <a className="receipt-empty" href={`/api/receipts/${row.receiptPath}`} target="_blank" rel="noreferrer">PDF</a>
+                        : <img src={`/api/receipts/${row.receiptPath}`} alt="" />
+                    ) : <span className="receipt-empty"><ImagePlus size={16} /></span>}
                     <div>
                       <b>{row.description}</b>
                       <small>{row.date} · {categoryLabel(row.category)}{row.notes ? ` · ${row.notes}` : ""}</small>
                     </div>
                     <strong className="money">{aed(row.amount)}</strong>
-                    <button className="cancel" type="button" onClick={() => remove(mode === "general" ? "general" : "vehicle", row.id)} aria-label={t.delete}><Trash2 size={16} /></button>
+                    <div className="expense-actions">
+                      <button type="button" aria-label={t.edit} title={t.edit} onClick={() => edit(row)}><Pencil size={16} /></button>
+                      <button className="danger" type="button" aria-label={t.delete} title={t.delete} onClick={() => remove(mode === "general" ? "general" : "vehicle", row.id)}><Trash2 size={16} /></button>
+                    </div>
                   </article>
                 ))}
               </div>

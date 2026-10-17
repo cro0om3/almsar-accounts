@@ -80,8 +80,8 @@ export default function FinanceDesk({ vehicles }) {
                   });
                 }}
               >
-                <b>{vehicle.vehicleNumber}</b>
-                <span>{vehicle.vehicleType || t.vehicle}</span>
+                <b>{vehicle.vehicleType || t.vehicle}</b>
+                <span>{vehicle.vehicleNumber}</span>
                 {vehicle.transactions.length === 0 ? <em>{t.noFinancial}</em> : <strong className={vehicle.profit >= 0 ? "green" : "orange"}>{aed(vehicle.profit)}</strong>}
               </button>
             ))}
@@ -98,8 +98,8 @@ export default function FinanceDesk({ vehicles }) {
             <>
               <div className="detail-top">
                 <div>
-                  <h2>{current.vehicleNumber}</h2>
-                  <p>{current.vehicleType || t.vehicle}</p>
+                  <h2>{current.vehicleType || t.vehicle}</h2>
+                  <p>{current.vehicleNumber}</p>
                 </div>
               </div>
               {current.transactions.length === 0 ? (

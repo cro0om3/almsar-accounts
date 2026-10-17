@@ -33,14 +33,12 @@ function AlertsButton({ alerts, t }) {
           <p>{t.alertWindow}</p>
           {alerts.length === 0 ? <p>{t.noAlerts}</p> : alerts.map((alert) => (
             <Link prefetch={false} key={`${alert.id}-${alert.kind}`} href={`/vehicles?id=${alert.id}`} onClick={() => setOpen(false)}>
-              <strong>{alert.vehicleNumber}</strong>
-              <span className={alert.expired ? "expired" : ""}>
-                {alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}
-                {" · "}
-                {alert.expired ? t.expiredOn : t.expiresOn}
-                {" "}
-                {alert.date}
-              </span>
+              <strong>{alert.vehicleType || alert.vehicleNumber}</strong>
+              {alert.vehicleType ? <small>{alert.vehicleNumber}</small> : null}
+              <span>{alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}</span>
+              <em className={alert.expired ? "expired" : ""}>
+                {alert.expired ? t.expiredOn : t.expiresOn} {alert.date}
+              </em>
             </Link>
           ))}
         </div>
@@ -61,7 +59,7 @@ export default function Shell({ children }) {
   );
 
   useEffect(() => {
-    if (["/quotes", "/invoices", "/purchase-orders", "/expenses"].some((href) => pathname.startsWith(href))) setDocs(true);
+    if (["/quotes", "/invoices", "/receipts", "/purchase-orders", "/expenses"].some((href) => pathname.startsWith(href))) setDocs(true);
     if (["/customers", "/vehicles", "/vendors", "/employees"].some((href) => pathname.startsWith(href))) setMasters(true);
     setDrawer(false);
     let stop = false;
@@ -126,6 +124,7 @@ export default function Shell({ children }) {
             <div className="sub">
               <Link prefetch={false} className={active("/quotes") ? "active" : ""} href="/quotes">{t.quotations}</Link>
               <Link prefetch={false} className={active("/invoices") ? "active" : ""} href="/invoices">{t.invoices}</Link>
+              <Link prefetch={false} className={active("/receipts") ? "active" : ""} href="/receipts">{t.receipts}</Link>
               <Link prefetch={false} className={active("/purchase-orders") ? "active" : ""} href="/purchase-orders">{t.purchaseOrders}</Link>
               <Link prefetch={false} className={active("/expenses") ? "active" : ""} href="/expenses">{t.expensesMenu}</Link>
             </div>
