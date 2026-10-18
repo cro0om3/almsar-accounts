@@ -51,6 +51,7 @@ img { max-width: 100%; display: block; }
 }
 .logo-tile {
   width: 54px;
+  max-width: 100%;
   height: auto;
   margin: 4px auto 0;
   background: white;
@@ -59,9 +60,11 @@ img { max-width: 100%; display: block; }
   overflow: hidden;
   padding: 6px;
   flex: 0 0 auto;
+  min-width: 0;
+  align-self: center;
 }
-.logo-tile img { width: 100%; height: auto; object-fit: contain; }
-.is-open .logo-tile { width: auto; height: auto; margin: 4px 8px 0; padding: 8px 10px; }
+.logo-tile img { width: 100%; max-width: 100%; height: auto; object-fit: contain; }
+.is-open .logo-tile { width: auto; height: auto; margin: 4px 8px 0; padding: 8px 10px; align-self: stretch; }
 .brand-copy { padding: 0 10px 8px; }
 .brand-copy b { display: block; color: white; font-size: 14px; }
 .brand-copy span { display: block; font-size: 12px; color: #9fb0c6; }
@@ -84,7 +87,7 @@ img { max-width: 100%; display: block; }
 .nav .group svg:last-child { margin-inline-start: auto; }
 .sub { display: flex; flex-direction: column; gap: 2px; padding-inline-start: 34px; }
 .sub a { padding: 8px 10px; font-size: 14px; }
-.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0; max-width: 100%; }
 .lang {
   border: 1px solid rgba(255,255,255,.2);
   background: transparent;
@@ -458,8 +461,12 @@ input, select, textarea {
 .alert-line em { font-style: normal; color: #b54708; font-size: 13px; font-weight: 650; line-height: 1.35; }
 @media (max-width: 1200px) {
   .actions, .grid-3, .grid-3b, .doc-grid, .two, .cols { grid-template-columns: 1fr 1fr; }
-  .app, .app.is-collapsed { grid-template-columns: 84px 1fr; }
-  .brand-copy, .nav span, .sub, .user span, .side .lang { display: none; }
+  .app.is-collapsed { grid-template-columns: 84px 1fr; }
+  .app.is-collapsed .brand-copy,
+  .app.is-collapsed .nav span,
+  .app.is-collapsed .sub,
+  .app.is-collapsed .user span,
+  .app.is-collapsed .side .lang { display: none; }
 }
 @media (max-width: 800px) {
   .app, .app.is-open, .app.is-collapsed { display: block; min-height: 100vh; }
@@ -494,15 +501,17 @@ input, select, textarea {
   }
   [dir="rtl"] .side { left: auto; right: 0; transform: translateX(110%); }
   .app.menu-open .side, [dir="rtl"] .app.menu-open .side { transform: none; }
-  .logo-tile { width: auto; height: auto; margin: 4px 8px 8px; padding: 8px 10px; }
-  .brand-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+  .side { overflow-x: hidden; overflow-y: auto; }
+  .logo-tile { width: auto; height: auto; margin: 4px 8px 8px; padding: 8px 10px; align-self: stretch; min-width: 0; }
+  .brand-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; max-width: 100%; }
   .brand-copy b, .brand-copy span { display: block; line-height: 1.35; }
   .sub { display: flex; }
   .nav span, .user span { display: block; }
-  .side-foot { align-items: flex-start; gap: 8px; }
-  .side .lang { display: inline-flex; width: auto; align-self: flex-start; border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+  .side-foot { align-items: stretch; gap: 8px; }
+  .side .lang { display: flex; width: 100%; max-width: 100%; align-self: stretch; justify-content: center; border-radius: 999px; padding: 8px 12px; font-size: 13px; }
   .nav a, .nav .group { min-height: 40px; padding: 8px 10px; border-radius: 12px; }
-  .user { min-width: 0; }
+  .user { min-width: 0; max-width: 100%; }
+  .user .avatar { display: grid; flex: 0 0 34px; }
   .user span { min-width: 0; }
   .user small { overflow: hidden; text-overflow: ellipsis; }
   .main { padding: 10px 10px max(20px, env(safe-area-inset-bottom)); }
