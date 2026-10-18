@@ -123,6 +123,99 @@ create table if not exists invoice_items (
   "amountReceived" double precision
 );
 
+alter table vehicles add column if not exists category text;
+alter table vehicles add column if not exists notes text;
+alter table vehicles add column if not exists "registrationExpiry" text;
+alter table vehicles add column if not exists "ownershipExpiry" text;
+alter table vehicles add column if not exists "ownershipPath" text;
+alter table quotes add column if not exists status text default 'draft';
+
+create table if not exists admin_settings (
+  id text primary key,
+  "companyName" text,
+  address text,
+  "vatNumber" text,
+  "footerContactEnglish" text,
+  "footerAddressEnglish" text,
+  currency text,
+  "defaultTerms" text,
+  "createdAt" timestamptz,
+  "updatedAt" timestamptz
+);
+
+create table if not exists purchase_orders (
+  id text primary key,
+  number text,
+  date text,
+  "vendorId" text references vendors(id),
+  subtotal double precision,
+  tax double precision,
+  amount double precision,
+  currency text default 'AED',
+  status text,
+  terms text,
+  notes text,
+  "createdAt" timestamptz
+);
+
+create table if not exists po_items (
+  id text primary key,
+  "purchaseOrderId" text not null references purchase_orders(id) on delete cascade,
+  "serialNumber" integer,
+  "vehicleTypeId" text,
+  "vehicleTypeLabel" text,
+  "vehicleNumber" text,
+  description text,
+  "rentalBasis" text,
+  quantity double precision,
+  "unitPrice" double precision,
+  "taxPercent" double precision,
+  "grossAmount" double precision,
+  "lineTaxAmount" double precision,
+  "lineTotal" double precision,
+  total double precision
+);
+
+create table if not exists payslips (
+  id text primary key,
+  month text,
+  year integer,
+  "employeeId" text references employees(id),
+  "baseSalary" double precision,
+  "overtimeHours" double precision,
+  "overtimeRate" double precision,
+  "overtimePay" double precision,
+  deductions double precision,
+  "deductionRemarks" text,
+  "netPay" double precision,
+  status text,
+  notes text,
+  "createdAt" timestamptz,
+  "updatedAt" timestamptz
+);
+
+create table if not exists vehicle_transactions (
+  id text primary key,
+  "vehicleId" text,
+  "employeeId" text,
+  "transactionType" text,
+  category text,
+  amount double precision,
+  date text,
+  month text,
+  description text,
+  notes text,
+  "receiptPath" text,
+  "createdAt" timestamptz,
+  "updatedAt" timestamptz
+);
+
+alter table admin_settings enable row level security;
+alter table purchase_orders enable row level security;
+alter table po_items enable row level security;
+alter table payslips enable row level security;
+alter table vehicle_transactions enable row level security;
+
 alter table customers enable row level security;
 alter table vendors enable row level security;
 alter table employees enable row level security;
@@ -137,7 +230,8 @@ declare
   tbl text;
 begin
   foreach tbl in array array[
-    'customers','vendors','employees','vehicles','quotes','quote_items','invoices','invoice_items'
+    'customers','vendors','employees','vehicles','quotes','quote_items','invoices','invoice_items',
+    'admin_settings','purchase_orders','po_items','payslips','vehicle_transactions'
   ]
   loop
     execute format('drop policy if exists staff_all on %I', tbl);
