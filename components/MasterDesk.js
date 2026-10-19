@@ -30,6 +30,14 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     if (kind === "vehicles") {
       return { primary: row.vehicleType || "—", secondary: row.vehicleNumber || "" };
     }
+    if (kind === "customers") {
+      const company = String(row.company || "").trim();
+      const contact = String(row.name || "").trim();
+      return {
+        primary: company || contact || "—",
+        secondary: company && contact && company !== contact ? contact : "",
+      };
+    }
     const subtitle = fields.find((field) => field.key !== labelKey && !field.file && !field.date && !field.long);
     return { primary: row[labelKey] || "—", secondary: subtitle ? (row[subtitle.key] || "") : "" };
   }
@@ -134,7 +142,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
             <div className="desk-blank"><h2>{t.noRecords}</h2></div>
           ) : (
             <form className="panel master-form" onSubmit={save}>
-              <h2>{current[labelKey] || t.newRecord}</h2>
+              <h2>{(kind === "customers" ? (current.company || current.name) : current[labelKey]) || t.newRecord}</h2>
               <div className="master-grid">
                 {fields.filter((field) => !field.file).map((field) => (
                   <label key={field.key} className={field.long ? "span-2" : undefined}>{t[field.label] || field.label}

@@ -7,6 +7,7 @@ import { Download, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteReceiptAction } from "../app/actions";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
+import { customerContact, customerTitle } from "../lib/party";
 
 export default function ReceiptDesk({ docs }) {
   const { t } = useI18n();
@@ -65,7 +66,7 @@ export default function ReceiptDesk({ docs }) {
                   <b>{doc.number}</b>
                   <strong>{aed(doc.amount)}</strong>
                 </div>
-                <div>{doc.customerName || "—"}</div>
+                <div>{customerTitle(doc) || "—"}</div>
                 <small>{doc.date}{doc.invoiceNumber ? ` · ${doc.invoiceNumber}` : ""}</small>
               </button>
             ))}
@@ -83,7 +84,7 @@ export default function ReceiptDesk({ docs }) {
               <div className="detail-top">
                 <div>
                   <h2>{current.number}</h2>
-                  <p>{current.customerName || "—"} · {current.date}</p>
+                  <p>{customerTitle(current) || "—"} · {current.date}</p>
                 </div>
                 <div className="detail-actions">
                   <button type="button" className="btn ghost" aria-label={t.download} title={t.download} onClick={async () => { const { downloadReceipt } = await import("../lib/download-doc"); downloadReceipt(current, current.customer); }}><Download size={18} /><span>{t.download}</span></button>
@@ -94,7 +95,8 @@ export default function ReceiptDesk({ docs }) {
               <div className="detail-cards">
                 <article className="panel">
                   <h3>{t.customerDetails}</h3>
-                  <div className="pair"><span>{t.customerName}</span><b>{current.customer?.name || current.customerName || "—"}</b></div>
+                  <div className="pair"><span>{t.customerName}</span><b>{customerTitle(current.customer || current) || "—"}</b></div>
+                  {customerContact(current.customer || current) ? <div className="pair"><span>{t.contactPerson}</span><b>{customerContact(current.customer || current)}</b></div> : null}
                   <div className="pair"><span>{t.email}</span><b>{current.customer?.email || "—"}</b></div>
                   <div className="pair"><span>{t.phone}</span><b className="ltr">{current.customer?.phone || "—"}</b></div>
                   {current.customer?.trn ? <div className="pair"><span>TRN</span><b className="ltr">{current.customer.trn}</b></div> : null}

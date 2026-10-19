@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { saveInvoiceAction, saveQuoteAction } from "../app/actions";
 import { useI18n } from "./I18nProvider";
+import { customerContact, customerTitle } from "../lib/party";
 import { aed, recomputeLine, summarize } from "../lib/money";
 import { isFleetVehicle } from "../lib/vehicle-kind";
 
@@ -126,7 +127,7 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
   const copyChoices = useMemo(() => {
     const text = invoiceQuery.trim().toLowerCase();
     const rows = isInvoice ? invoices : quotes;
-    return rows.filter((row) => `${row.number} ${row.customerName || ""}`.toLowerCase().includes(text));
+    return rows.filter((row) => `${row.number} ${customerTitle(row)} ${row.customerName || ""}`.toLowerCase().includes(text));
   }, [invoices, quotes, invoiceQuery, isInvoice]);
 
   if (asking) {
@@ -148,7 +149,7 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
               onClick={() => router.push(isInvoice ? `/invoices/new?fromInvoice=${row.id}` : `/quotes/new?fromQuote=${row.id}`)}
             >
               <b>{row.number}</b>
-              <span>{row.customerName || "—"}</span>
+              <span>{customerTitle(row) || "—"}</span>
               <small>{String(row.date || "").slice(0, 10)} · {aed(row.total)}</small>
             </button>
           ))}
@@ -229,12 +230,13 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
           <label style={{ marginTop: 12 }}>{t.selectCustomer}
             <select value={header.customerId} onChange={(event) => setHeader({ ...header, customerId: event.target.value })}>
               <option value="">{t.selectCustomer}</option>
-              {customers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+              {customers.map((row) => <option key={row.id} value={row.id}>{customerTitle(row)}</option>)}
             </select>
           </label>
           {customer ? (
             <div className="customer-box">
-              <b>{customer.name}</b>
+              <b>{customerTitle(customer)}</b>
+              {customerContact(customer) ? <div>{customerContact(customer)}</div> : null}
               <div className="meta">
                 <span>{t.email}</span><span>{customer.email || "—"}</span>
                 <span>{t.phone}</span><span>{customer.phone || "—"}</span>

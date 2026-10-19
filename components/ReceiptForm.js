@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileText } from "lucide-react";
 import { saveReceiptAction } from "../app/actions";
 import { useI18n } from "./I18nProvider";
+import { customerContact, customerTitle } from "../lib/party";
 import { aed } from "../lib/money";
 
 function cents(value) {
@@ -115,12 +116,13 @@ export default function ReceiptForm({ doc, customers, invoices }) {
           <label>{t.selectCustomer}
             <select value={header.customerId || ""} onChange={(event) => chooseCustomer(event.target.value)}>
               <option value="">{t.selectCustomer}</option>
-              {customers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+              {customers.map((row) => <option key={row.id} value={row.id}>{customerTitle(row)}</option>)}
             </select>
           </label>
           {customer ? (
             <div className="customer-box">
-              <strong>{customer.name}</strong>
+              <strong>{customerTitle(customer)}</strong>
+              {customerContact(customer) ? <div>{customerContact(customer)}</div> : null}
               <div className="meta">
                 <span>{t.email}</span><span>{customer.email || "—"}</span>
                 <span>{t.phone}</span><span>{customer.phone || "—"}</span>

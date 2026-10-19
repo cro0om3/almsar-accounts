@@ -1,5 +1,6 @@
 import ReportsView from "../../components/ReportsView";
 import { dashboard, listInvoices } from "../../lib/accounts";
+import { customerTitle } from "../../lib/party";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export default async function ReportsPage() {
     .map((row) => ({
       id: row.id,
       number: row.number,
-      customerName: row.customerName || "",
+      customerName: customerTitle(row),
       date: row.date,
       total: row.total,
       amountReceived: row.amountReceived,

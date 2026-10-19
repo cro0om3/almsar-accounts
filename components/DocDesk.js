@@ -8,6 +8,7 @@ import { deleteInvoiceAction, deletePurchaseOrderAction, deleteQuoteAction, reco
 import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
+import { customerContact, customerTitle } from "../lib/party";
 
 function basisLabel(value, t) {
   if (value === "hourly") return t.hourly;
@@ -111,7 +112,7 @@ export default function DocDesk({ kind, docs }) {
                     <b>{doc.number}</b>
                     <strong>{aed(doc.total)}</strong>
                   </div>
-                  <div>{doc.customerName || doc.vendorName || "—"}</div>
+                  <div>{customerTitle(doc) || doc.vendorName || "—"}</div>
                   <small>{doc.date}</small>
                   <div className="doc-row-meta">
                     {chip ? <em>{chip}</em> : null}
@@ -139,7 +140,7 @@ export default function DocDesk({ kind, docs }) {
                     {current.number}{" "}
                     <span className={kind === "invoice" ? "tag green" : "tag mint"}>{statusLabel(current.status, t, kind)}</span>
                   </h2>
-                  <p>{current.customerName || current.vendorName} · {current.date}</p>
+                  <p>{customerTitle(current) || current.vendorName} · {current.date}</p>
                 </div>
                 <div className="detail-actions">
                   <button type="button" className="btn ghost" aria-label={t.download} title={t.download} onClick={async () => { const { downloadPdf } = await import("../lib/download-doc"); downloadPdf(kind, current, current.customer); }}><Download size={18} /><span>{t.download}</span></button>
@@ -162,7 +163,8 @@ export default function DocDesk({ kind, docs }) {
               <div className="detail-cards">
                 <article className="panel">
                   <h3>{t.customerDetails}</h3>
-                  <div className="pair"><span>{t.customerName}</span><b>{current.customer?.name || current.customerName || "—"}</b></div>
+                  <div className="pair"><span>{t.customerName}</span><b>{customerTitle(current.customer || current) || current.vendorName || "—"}</b></div>
+                  {customerContact(current.customer || current) ? <div className="pair"><span>{t.contactPerson}</span><b>{customerContact(current.customer || current)}</b></div> : null}
                   <div className="pair"><span>{t.email}</span><b>{current.customer?.email || "—"}</b></div>
                   <div className="pair"><span>{t.phone}</span><b className="ltr">{current.customer?.phone || "—"}</b></div>
                   {current.customer?.address ? <div className="pair"><span>{t.address}</span><b>{current.customer.address}</b></div> : null}
