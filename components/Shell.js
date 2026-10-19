@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  BarChart3,
   Bell,
   Car,
   ChevronDown,
@@ -16,11 +15,31 @@ import {
   Receipt,
   Settings,
   Users,
-  Wallet,
 } from "lucide-react";
 import { useI18n } from "./I18nProvider";
 import SavedToast from "./SavedToast";
 import { can } from "../lib/permissions";
+
+function NavGroup({ open, expanded, onToggle, icon: Icon, label, links, active }) {
+  if (!links.length) return null;
+  const childOn = links.some(([href]) => active(href));
+  return (
+    <>
+      <button className={`group ${childOn ? "on" : ""}`} type="button" onClick={onToggle}>
+        <Icon size={18} />
+        {open ? <span>{label}</span> : null}
+        {open ? <ChevronDown size={16} className={expanded ? "chev" : ""} /> : null}
+      </button>
+      {open && expanded ? (
+        <div className="sub">
+          {links.map(([href, , text]) => (
+            <Link prefetch={false} key={href} className={active(href) ? "active" : ""} href={href}>{text}</Link>
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
 
 function AlertsButton({ alerts, t }) {
   const [open, setOpen] = useState(false);
@@ -56,14 +75,15 @@ export default function Shell({ children, session }) {
   const [alerts, setAlerts] = useState([]);
   const [open, setOpen] = useState(true);
   const [drawer, setDrawer] = useState(false);
-  const [docs, setDocs] = useState(true);
-  const [masters, setMasters] = useState(
-    ["/customers", "/vehicles", "/vendors", "/employees"].some((href) => pathname.startsWith(href))
-  );
+  const [docs, setDocs] = useState(false);
+  const here = (href) => pathname === href || pathname.startsWith(`${href}/`);
+  const [fleet, setFleet] = useState(["/vehicle-dashboard", "/vehicle-finances"].some(here));
+  const [masters, setMasters] = useState(["/customers", "/vehicles", "/vendors", "/employees", "/payslips"].some(here));
 
   useEffect(() => {
-    if (["/quotes", "/invoices", "/receipts", "/purchase-orders", "/expenses"].some((href) => pathname.startsWith(href))) setDocs(true);
-    if (["/customers", "/vehicles", "/vendors", "/employees"].some((href) => pathname.startsWith(href))) setMasters(true);
+    if (["/quotes", "/invoices", "/receipts", "/purchase-orders", "/expenses"].some(here)) setDocs(true);
+    if (["/vehicle-dashboard", "/vehicle-finances"].some(here)) setFleet(true);
+    if (["/customers", "/vehicles", "/vendors", "/employees", "/payslips"].some(here)) setMasters(true);
     setDrawer(false);
     if (pathname === "/login") return undefined;
     let stop = false;
@@ -77,7 +97,7 @@ export default function Shell({ children, session }) {
     setDrawer(false);
   }
 
-  const active = (href) => pathname === href || (href !== "/" && pathname.startsWith(href));
+  const active = (href) => pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
   const allowed = (key) => can(session, key);
   if (pathname === "/login") return children;
 
@@ -88,11 +108,16 @@ export default function Shell({ children, session }) {
     ["/purchase-orders", "orders", t.purchaseOrders],
     ["/expenses", "expenses", t.expensesMenu],
   ].filter(([, key]) => allowed(key));
+  const fleetLinks = [
+    ["/vehicle-dashboard", "fleet", t.vehicleDashboard],
+    ["/vehicle-finances", "finances", t.vehicleFinances],
+  ].filter(([, key]) => allowed(key));
   const masterLinks = [
     ["/customers", "customers", t.customers],
     ["/vehicles", "vehicles", t.vehicles],
     ["/vendors", "vendors", t.vendors],
     ["/employees", "employees", t.employees],
+    ["/payslips", "payslips", t.payslips],
   ].filter(([, key]) => allowed(key));
   const roleLabel = session?.role === "admin" ? t.adminRole : session?.role === "accountant" ? t.accountantRole : t.customRole;
 
@@ -117,12 +142,6 @@ export default function Shell({ children, session }) {
         <div className="logo-tile">
           <img src="/api/branding/logo" alt="Almsar Alzaki" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/logo.png"; }} />
         </div>
-        {open ? (
-          <div className="brand-copy">
-            <b>{t.brand}</b>
-            <span>{t.brandSub}</span>
-          </div>
-        ) : null}
         <nav className="nav" onClick={(event) => { if (event.target.closest("a")) closeMenu(); }}>
           {allowed("home") ? (
           <Link prefetch={false} className={active("/") && pathname === "/" ? "active" : ""} href="/" title={t.home}>
@@ -130,52 +149,9 @@ export default function Shell({ children, session }) {
             {open ? <span>{t.home}</span> : null}
           </Link>
           ) : null}
-          {allowed("fleet") ? (
-          <Link prefetch={false} className={active("/vehicle-dashboard") ? "active" : ""} href="/vehicle-dashboard" title={t.vehicleDashboard}>
-            <BarChart3 size={18} />
-            {open ? <span>{t.vehicleDashboard}</span> : null}
-          </Link>
-          ) : null}
-          {allowed("finances") ? (
-          <Link prefetch={false} className={active("/vehicle-finances") ? "active" : ""} href="/vehicle-finances" title={t.vehicleFinances}>
-            <Car size={18} />
-            {open ? <span>{t.vehicleFinances}</span> : null}
-          </Link>
-          ) : null}
-          {docLinks.length ? (
-          <button className={`group ${docs ? "on" : ""}`} type="button" onClick={() => setDocs((value) => !value)}>
-            <FileText size={18} />
-            {open ? <span>{t.docGenerator}</span> : null}
-            {open ? <ChevronDown size={16} /> : null}
-          </button>
-          ) : null}
-          {open && docs && docLinks.length ? (
-            <div className="sub">
-              {docLinks.map(([href, , label]) => (
-                <Link prefetch={false} key={href} className={active(href) ? "active" : ""} href={href}>{label}</Link>
-              ))}
-            </div>
-          ) : null}
-          {masterLinks.length ? (
-          <button className={`group ${masters ? "on" : ""}`} type="button" onClick={() => setMasters((value) => !value)}>
-            <Database size={18} />
-            {open ? <span>{t.masters}</span> : null}
-            {open ? <ChevronDown size={16} /> : null}
-          </button>
-          ) : null}
-          {open && masters && masterLinks.length ? (
-            <div className="sub">
-              {masterLinks.map(([href, , label]) => (
-                <Link prefetch={false} key={href} className={active(href) ? "active" : ""} href={href}>{label}</Link>
-              ))}
-            </div>
-          ) : null}
-          {allowed("payslips") ? (
-          <Link prefetch={false} className={active("/payslips") ? "active" : ""} href="/payslips" title={t.payslips}>
-            <Wallet size={18} />
-            {open ? <span>{t.payslips}</span> : null}
-          </Link>
-          ) : null}
+          <NavGroup open={open} expanded={fleet} onToggle={() => setFleet((value) => !value)} icon={Car} label={t.fleet} links={fleetLinks} active={active} />
+          <NavGroup open={open} expanded={docs} onToggle={() => setDocs((value) => !value)} icon={FileText} label={t.docGenerator} links={docLinks} active={active} />
+          <NavGroup open={open} expanded={masters} onToggle={() => setMasters((value) => !value)} icon={Database} label={t.masters} links={masterLinks} active={active} />
           {allowed("reports") ? (
           <Link prefetch={false} className={active("/reports") ? "active" : ""} href="/reports" title={t.reports}>
             <Receipt size={18} />
@@ -196,7 +172,6 @@ export default function Shell({ children, session }) {
           ) : null}
         </nav>
         <div className="side-foot">
-          <button className="lang" type="button" onClick={toggle}>{t.language}</button>
           <div className="user">
             <span className="avatar"><Users size={16} /></span>
             {open ? (
@@ -206,10 +181,13 @@ export default function Shell({ children, session }) {
               </span>
             ) : null}
           </div>
-          <button className="lang" type="button" onClick={async () => {
-            await fetch("/api/logout", { method: "POST" });
-            window.location.href = "/login";
-          }}>{t.logout}</button>
+          <div className="foot-row">
+            <button className="lang" type="button" onClick={toggle}>{t.language}</button>
+            <button className="lang" type="button" onClick={async () => {
+              await fetch("/api/logout", { method: "POST" });
+              window.location.href = "/login";
+            }}>{t.logout}</button>
+          </div>
         </div>
       </aside>
       <SavedToast />
