@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { deleteStaff, saveStaff, assertPermission } from "../lib/access";
-import { deleteCompanyFile, deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, deleteReceipt, getSettings, recordPayment, saveBrandingPaths, saveCompanyFile, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveReceipt, saveSettings, saveVehicleExpense } from "../lib/accounts";
+import { deleteCompanyFile, deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, deleteReceipt, getSettings, recordPayment, saveBrandingPaths, saveCompanyFile, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveReceipt, saveSettings, saveVehicleExpense, updateCompanyFile } from "../lib/accounts";
 import { deleteObject, putObject } from "../lib/object-store";
 
 async function allow(key) {
@@ -280,6 +280,21 @@ export async function saveCompanyFileAction(formData) {
     category: String(formData.get("category") || "papers"),
     storedName,
     originalName: file.name || storedName,
+    notes: String(formData.get("notes") || ""),
+  });
+  revalidatePath("/files");
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+export async function updateCompanyFileAction(formData) {
+  await allow("files");
+  const id = String(formData.get("id") || "");
+  const title = String(formData.get("title") || "").trim();
+  if (!id || !title) return { error: "required" };
+  await updateCompanyFile(id, {
+    title,
+    category: String(formData.get("category") || "other"),
     notes: String(formData.get("notes") || ""),
   });
   revalidatePath("/files");
