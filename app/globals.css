@@ -240,6 +240,7 @@ img { max-width: 100%; display: block; }
   padding: 10px 14px;
   font-weight: 600;
 }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn.ghost { background: white; color: var(--ink); border: 1px solid var(--line); }
 .table-card { background: white; border-radius: 16px; overflow: auto; }
 table { width: 100%; border-collapse: collapse; }

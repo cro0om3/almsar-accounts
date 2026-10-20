@@ -68,32 +68,50 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     setDraft({ ...(current || {}), [key]: value });
   }
 
+  function payload() {
+    const next = { ...(current || {}) };
+    for (const field of fields) {
+      if (!field.number) continue;
+      const raw = next[field.key];
+      next[field.key] = raw === "" || raw == null ? null : Number(raw);
+    }
+    return next;
+  }
+
   async function save(event) {
     event.preventDefault();
     const requiredKey = labelKey || fields[0].key;
     if (!current || !String(current[requiredKey] || "").trim()) return;
     setSaving(true);
-    let id = current.id;
-    if (kind === "vehicles") {
-      const body = new FormData();
-      body.set("id", current.id || "");
-      for (const field of fields) {
-        if (field.file) continue;
-        body.set(field.key, current[field.key] || "");
+    setNotice("");
+    try {
+      let id = current.id;
+      if (kind === "vehicles") {
+        const body = new FormData();
+        body.set("id", current.id || "");
+        for (const field of fields) {
+          if (field.file) continue;
+          body.set(field.key, current[field.key] || "");
+        }
+        body.set("ownershipPath", photo.cleared ? "" : (current.ownershipPath || ""));
+        if (photo.cleared) body.set("clearOwnership", "1");
+        if (photo.file) body.set("ownership", photo.file);
+        id = await saveVehicleAction(body);
+      } else {
+        const result = await saveMasterAction(kind, payload());
+        if (result?.error) throw new Error(result.error);
+        id = result;
       }
-      body.set("ownershipPath", photo.cleared ? "" : (current.ownershipPath || ""));
-      if (photo.cleared) body.set("clearOwnership", "1");
-      if (photo.file) body.set("ownership", photo.file);
-      id = await saveVehicleAction(body);
-    } else {
-      id = await saveMasterAction(kind, current);
+      setDraft(null);
+      setPhoto({ file: null, preview: "", cleared: false });
+      setSelectedId(id);
+      flashSaved();
+      router.refresh();
+    } catch (error) {
+      setNotice(error?.message && !/server components|digest/i.test(error.message) ? error.message : t.saveFailed);
+    } finally {
+      setSaving(false);
     }
-    setDraft(null);
-    setPhoto({ file: null, preview: "", cleared: false });
-    setSelectedId(id);
-    setSaving(false);
-    flashSaved();
-    router.refresh();
   }
 
   async function remove() {
@@ -154,7 +172,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                         {field.options.map((value) => <option key={value} value={value}>{t[`kind_${value}`] || value}</option>)}
                       </select>
                     ) : (
-                      <input type={field.date ? "date" : field.number ? "number" : "text"} value={field.date ? String(current[field.key] || "").slice(0, 10) : (current[field.key] || "")} onChange={(event) => update(field.key, event.target.value)} />
+                      <input type={field.date ? "date" : field.number ? "number" : "text"} value={field.date ? String(current[field.key] ?? "").slice(0, 10) : (current[field.key] ?? "")} onChange={(event) => update(field.key, event.target.value)} />
                     )}
                   </label>
                 ))}

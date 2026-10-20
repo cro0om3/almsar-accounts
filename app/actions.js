@@ -96,10 +96,14 @@ export async function saveInvoiceAction(payload) {
 
 export async function saveMasterAction(kind, payload) {
   await allow(kind);
-  const id = await saveMaster(kind, payload);
-  revalidatePath(`/${kind}`);
-  revalidatePath("/");
-  return id;
+  try {
+    const id = await saveMaster(kind, payload);
+    revalidatePath(`/${kind}`);
+    revalidatePath("/");
+    return id;
+  } catch (error) {
+    return { error: String(error?.message || "saveFailed") };
+  }
 }
 
 const IMAGE_TYPES = {
