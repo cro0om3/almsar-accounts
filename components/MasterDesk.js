@@ -46,7 +46,13 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
 
   function rowLines(row) {
     if (kind === "vehicles") {
-      const days = daysUntil(row.ownershipExpiry || row.registrationExpiry);
+      let days = null;
+      try {
+        const next = daysUntil(row.ownershipExpiry || row.registrationExpiry);
+        if (Number.isFinite(next)) days = next;
+      } catch {
+        days = null;
+      }
       return { primary: row.vehicleType || "—", secondary: row.vehicleNumber || "", days };
     }
     if (kind === "customers") {
