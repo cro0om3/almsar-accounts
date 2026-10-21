@@ -8,9 +8,13 @@ const fields = [
   { key: "vehicleNumber", label: "vehicleNumber" },
   { key: "category", label: "vehicleCategory" },
   { key: "year", label: "yearMade", number: true },
-  { key: "notes", label: "notes", long: true },
+  { key: "color", label: "color" },
+  { key: "chassisNumber", label: "chassisNumber" },
   { key: "ownershipExpiry", label: "ownershipExpiry", date: true },
-  { key: "ownershipPath", label: "ownershipPhoto", file: true, folder: "ownership" },
+  { key: "insuranceExpiry", label: "insuranceExpiry", date: true },
+  { key: "notes", label: "notes", long: true },
+  { key: "ownershipPath", label: "ownershipFront", file: true, folder: "ownership" },
+  { key: "ownershipBackPath", label: "ownershipBack", file: true, folder: "ownership" },
 ];
 
 export default async function VehiclesPage({ searchParams }) {

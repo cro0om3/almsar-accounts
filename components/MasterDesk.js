@@ -2,8 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ScanLine, Search } from "lucide-react";
+import { Loader2, Plus, ScanLine, Search } from "lucide-react";
 import { deleteMasterAction, saveEmployeeAction, saveMasterAction, saveVehicleAction } from "../app/actions";
+import DateField from "./DateField";
 import FilePick from "./FilePick";
 import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
@@ -25,6 +26,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
   const [uploads, setUploads] = useState(emptyUploads);
   const fileRefs = useRef({});
   const scanRef = useRef(null);
+  const scanSide = useRef("front");
   const readGen = useRef(0);
   const currentRef = useRef(null);
   const fileFields = fields.filter((field) => field.file);
@@ -157,6 +159,51 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     }
   }
 
+  async function readOwnership(fileList, slotKey) {
+    const files = Array.from(fileList || []).slice(0, 2);
+    if (!files.length) return;
+    const gen = ++readGen.current;
+    if (slotKey && files[0]) setSlot(slotKey, { file: files[0], preview: "", cleared: false });
+    setReading(true);
+    setNoticeKind("busy");
+    setNotice(t.readingOwnership);
+    try {
+      const { readVehicleOwnership } = await import("../lib/read-employee-doc");
+      const info = await readVehicleOwnership(files);
+      if (gen !== readGen.current) return;
+      if (!info) {
+        setNoticeKind("err");
+        setNotice(t.ownershipReadFailed);
+        return;
+      }
+      const base = currentRef.current || {};
+      const next = { ...base };
+      const front = slotKey !== "ownershipBackPath";
+      const back = slotKey !== "ownershipPath";
+      if (front) {
+        if (info.vehicleNumber) next.vehicleNumber = info.vehicleNumber;
+        if (info.category) next.category = info.category;
+        if (info.ownershipExpiry) next.ownershipExpiry = info.ownershipExpiry;
+        if (info.insuranceExpiry) next.insuranceExpiry = info.insuranceExpiry;
+      }
+      if (back) {
+        if (info.vehicleType) next.vehicleType = info.vehicleType;
+        if (info.year) next.year = info.year;
+        if (info.color) next.color = info.color;
+        if (info.chassisNumber) next.chassisNumber = info.chassisNumber;
+      }
+      setDraft(next);
+      setNoticeKind("ok");
+      setNotice(t.ownershipReadOk);
+    } catch {
+      if (gen !== readGen.current) return;
+      setNoticeKind("err");
+      setNotice(t.ownershipReadFailed);
+    } finally {
+      if (gen === readGen.current) setReading(false);
+    }
+  }
+
   function appendFileFields(body) {
     for (const field of fileFields) {
       const slot = slotOf(field.key);
@@ -175,17 +222,16 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     try {
       let id = current.id;
       if (kind === "vehicles") {
-        const photo = slotOf("ownershipPath");
         const body = new FormData();
         body.set("id", current.id || "");
         for (const field of fields) {
           if (field.file) continue;
           body.set(field.key, current[field.key] || "");
         }
-        body.set("ownershipPath", photo.cleared ? "" : (current.ownershipPath || ""));
-        if (photo.cleared) body.set("clearOwnership", "1");
-        if (photo.file) body.set("ownership", photo.file);
-        id = await saveVehicleAction(body);
+        appendFileFields(body);
+        const result = await saveVehicleAction(body);
+        if (result?.error) throw new Error(result.error === "duplicateChassis" ? t.duplicateChassis : result.error === "duplicateVehicle" ? t.duplicateVehicle : result.error);
+        id = result;
       } else if (kind === "employees" && fileFields.length) {
         const body = new FormData();
         body.set("id", current.id || "");
@@ -208,6 +254,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
       flashSaved();
       router.refresh();
     } catch (error) {
+      setNoticeKind("err");
       setNotice(error?.message && !/server components|digest/i.test(error.message) ? error.message : t.saveFailed);
     } finally {
       setSaving(false);
@@ -265,23 +312,42 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                 <h2>{(kind === "customers" ? (current.company || current.name) : current[labelKey]) || t.newRecord}</h2>
                 {kind === "employees" ? (
                   <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => scanRef.current?.click()}>
-                    <ScanLine size={16} /> {t.scanId}
+                    {reading ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
+                    {reading ? t.readingId : t.scanId}
                   </button>
                 ) : null}
+                {kind === "vehicles" ? (
+                  <span className="scan-pair">
+                    <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "front"; scanRef.current?.click(); }}>
+                      {reading && scanSide.current === "front" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
+                      {t.scanFront}
+                    </button>
+                    <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "back"; scanRef.current?.click(); }}>
+                      {reading && scanSide.current === "back" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
+                      {t.scanBack}
+                    </button>
+                  </span>
+                ) : null}
               </div>
-              {kind === "employees" ? (
+              {kind === "employees" || kind === "vehicles" ? (
                 <input
                   ref={scanRef}
                   className="sr-only"
                   type="file"
                   accept="image/*,application/pdf"
                   onChange={(event) => {
-                    const file = event.target.files?.[0] || null;
+                    const files = Array.from(event.target.files || []);
                     event.target.value = "";
-                    void readIdPhoto(file);
+                    if (kind === "vehicles") {
+                      const slot = scanSide.current === "back" ? "ownershipBackPath" : "ownershipPath";
+                      void readOwnership(files, slot);
+                    } else {
+                      void readIdPhoto(files[0] || null);
+                    }
                   }}
                 />
               ) : null}
+              {notice ? <div className={noticeKind === "ok" ? "notice-ok" : noticeKind === "busy" ? "notice-busy" : "errors"}>{notice}</div> : null}
               <div className="master-grid">
                 {fields.filter((field) => !field.file).map((field) => (
                   <label key={field.key} className={field.long ? "span-2" : undefined}>{t[field.label] || field.label}
@@ -293,11 +359,15 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                         {field.options.map((value) => <option key={value} value={value}>{t[`kind_${value}`] || value}</option>)}
                       </select>
                     ) : (
-                      <input type={field.date ? "date" : field.number ? "number" : "text"} value={field.date ? String(current[field.key] ?? "").slice(0, 10) : (current[field.key] ?? "")} onChange={(event) => update(field.key, event.target.value)} />
+                      field.date ? (
+                        <DateField value={current[field.key]} onChange={(next) => update(field.key, next)} />
+                      ) : (
+                        <input type={field.number ? "number" : "text"} value={current[field.key] ?? ""} onChange={(event) => update(field.key, event.target.value)} />
+                      )
                     )}
                   </label>
                 ))}
-                {fileFields.length > 1 ? <div className="file-picks-title span-2">{t.employeeDocuments}</div> : null}
+                {fileFields.length > 1 ? <div className="file-picks-title span-2">{kind === "vehicles" ? t.ownershipDocuments : t.employeeDocuments}</div> : null}
                 {fileFields.length > 1 ? (
                   <div className="file-picks span-2">
                     {fileFields.map((field) => (
@@ -308,7 +378,11 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                         preview={fileSrc(field)}
                         storedName={current[field.key]}
                         inputRef={(el) => { fileRefs.current[field.key] = el; }}
-                        onChange={(file) => setSlot(field.key, { file, preview: "", cleared: false })}
+                        onChange={(file) => {
+                          if (kind === "vehicles" && (field.key === "ownershipPath" || field.key === "ownershipBackPath") && file) void readOwnership([file], field.key);
+                          else if (kind === "employees" && field.key === "idPath" && file) void readIdPhoto(file);
+                          else setSlot(field.key, { file, preview: "", cleared: false });
+                        }}
                         onClear={() => setSlot(field.key, { file: null, preview: "", cleared: true })}
                       />
                     ))}
@@ -321,12 +395,15 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                     preview={fileSrc(field)}
                     storedName={current[field.key]}
                     inputRef={(el) => { fileRefs.current[field.key] = el; }}
-                    onChange={(file) => setSlot(field.key, { file, preview: "", cleared: false })}
+                    onChange={(file) => {
+                      if (kind === "vehicles" && (field.key === "ownershipPath" || field.key === "ownershipBackPath") && file) void readOwnership([file], field.key);
+                      else if (kind === "employees" && field.key === "idPath" && file) void readIdPhoto(file);
+                      else setSlot(field.key, { file, preview: "", cleared: false });
+                    }}
                     onClear={() => setSlot(field.key, { file: null, preview: "", cleared: true })}
                   />
                 ))}
               </div>
-              {notice ? <div className={noticeKind === "ok" ? "notice-ok" : noticeKind === "busy" ? "notice-busy" : "errors"}>{notice}</div> : null}
               <div className="detail-actions">
                 <button className="btn" type="submit" disabled={saving}>{t.save}</button>
                 {current.id ? <button className="btn danger" type="button" onClick={remove}>{t.delete}</button> : null}

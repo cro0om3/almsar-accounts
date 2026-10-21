@@ -13,6 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useI18n } from "./I18nProvider";
+import { displayFromIso } from "../lib/dates";
 import { aed } from "../lib/money";
 import { can } from "../lib/permissions";
 
@@ -37,8 +38,8 @@ export default function Dashboard({ data, session }) {
                     {name ? <small>{number}</small> : null}
                   </span>
                   <span className="alert-when">
-                    <span className="alert-kind">{alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}</span>
-                    <em>{alert.expired ? t.expiredOn : t.expiresOn} {formatAlertDate(alert.date, t.dir)}</em>
+                    <span className="alert-kind">{alert.kind === "insurance" ? t.insuranceExpiry : alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}</span>
+                    <em>{alert.expired ? t.expiredOn : t.expiresOn} {formatAlertDate(alert.date)}</em>
                   </span>
                 </Tag>
               );
@@ -179,11 +180,8 @@ export default function Dashboard({ data, session }) {
   );
 }
 
-function formatAlertDate(value, dir) {
-  const text = String(value || "").slice(0, 10);
-  const date = new Date(`${text}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return text;
-  return new Intl.DateTimeFormat(dir === "rtl" ? "ar" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date);
+function formatAlertDate(value) {
+  return displayFromIso(value) || String(value || "").slice(0, 10);
 }
 
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

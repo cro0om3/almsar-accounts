@@ -16,6 +16,7 @@ import {
   Settings,
   Users,
 } from "lucide-react";
+import { displayFromIso } from "../lib/dates";
 import { useI18n } from "./I18nProvider";
 import SavedToast from "./SavedToast";
 import { can } from "../lib/permissions";
@@ -57,9 +58,9 @@ function AlertsButton({ alerts, t }) {
             <Link prefetch={false} key={`${alert.id}-${alert.kind}`} href={`/vehicles?id=${alert.id}`} onClick={() => setOpen(false)}>
               <strong>{alert.vehicleType || alert.vehicleNumber}</strong>
               {alert.vehicleType ? <small>{alert.vehicleNumber}</small> : null}
-              <span>{alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}</span>
+              <span>{alert.kind === "insurance" ? t.insuranceExpiry : alert.kind === "ownership" ? t.ownershipExpiry : t.vehicleExpiry}</span>
               <em className={alert.expired ? "expired" : ""}>
-                {alert.expired ? t.expiredOn : t.expiresOn} {alert.date}
+                {alert.expired ? t.expiredOn : t.expiresOn} {displayFromIso(alert.date) || alert.date}
               </em>
             </Link>
           ))}

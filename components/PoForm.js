@@ -6,6 +6,7 @@ import { FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { savePurchaseOrderAction } from "../app/actions";
 import { aed, recomputeLine, summarize } from "../lib/money";
 import { isFleetVehicle } from "../lib/vehicle-kind";
+import DateField from "./DateField";
 import { useI18n } from "./I18nProvider";
 
 function freshLine() {
@@ -54,7 +55,7 @@ export default function PoForm({ doc, vendors, vehicles }) {
           <h2>{t.purchaseOrders}</h2>
           <div className="split" style={{ marginTop: 12 }}>
             <label>{t.poNumber}<input value={header.number} onChange={(event) => setHeader({ ...header, number: event.target.value })} /></label>
-            <label>{t.date}<input type="date" value={header.date} onChange={(event) => setHeader({ ...header, date: event.target.value })} /></label>
+            <label>{t.date}<DateField value={header.date} onChange={(date) => setHeader({ ...header, date })} /></label>
             <label>{t.status}
               <select value={header.status} onChange={(event) => setHeader({ ...header, status: event.target.value })}>
                 <option value="draft">{t.draft}</option>

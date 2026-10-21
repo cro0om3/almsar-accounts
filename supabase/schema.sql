@@ -132,6 +132,11 @@ alter table vehicles add column if not exists notes text;
 alter table vehicles add column if not exists "registrationExpiry" text;
 alter table vehicles add column if not exists "ownershipExpiry" text;
 alter table vehicles add column if not exists "ownershipPath" text;
+alter table vehicles add column if not exists "ownershipBackPath" text;
+alter table vehicles add column if not exists "chassisNumber" text;
+alter table vehicles add column if not exists "engineNumber" text;
+alter table vehicles add column if not exists color text;
+alter table vehicles add column if not exists "insuranceExpiry" text;
 alter table quotes add column if not exists status text default 'draft';
 
 create table if not exists admin_settings (

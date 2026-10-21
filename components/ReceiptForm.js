@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveReceiptAction } from "../app/actions";
+import DateField from "./DateField";
 import FilePick from "./FilePick";
 import { useI18n } from "./I18nProvider";
 import { customerContact, customerTitle } from "../lib/party";
@@ -179,7 +180,7 @@ export default function ReceiptForm({ doc, customers, invoices }) {
                 <input value={header.number} onChange={(event) => setHeader({ ...header, number: event.target.value })} />
               </label>
               <label>{t.date}
-                <input type="date" value={header.date} onChange={(event) => setHeader({ ...header, date: event.target.value })} />
+                <DateField value={header.date} onChange={(date) => setHeader({ ...header, date })} />
               </label>
               <label>{t.paymentMethod}
                 <select value={header.method || "cash"} onChange={(event) => setHeader({ ...header, method: event.target.value })}>

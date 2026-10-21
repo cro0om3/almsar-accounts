@@ -15,7 +15,7 @@ export function I18nProvider({ children }) {
 
   useEffect(() => {
     const pack = dictionary[lang];
-    document.documentElement.lang = lang;
+    document.documentElement.lang = lang === "ar" ? "ar-AE" : "en-GB";
     document.documentElement.dir = pack.dir;
     localStorage.setItem("accounts-lang", lang);
   }, [lang]);

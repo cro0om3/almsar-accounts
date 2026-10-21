@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { deleteStaff, saveStaff, assertPermission } from "../lib/access";
-import { deleteCompanyFile, deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, deleteReceipt, getEmployee, getSettings, recordPayment, saveBrandingPaths, saveCompanyFile, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveReceipt, saveSettings, saveVehicleExpense, updateCompanyFile } from "../lib/accounts";
+import { deleteCompanyFile, deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, deleteReceipt, getEmployee, getSettings, getVehicle, recordPayment, saveBrandingPaths, saveCompanyFile, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveReceipt, saveSettings, saveVehicleExpense, updateCompanyFile } from "../lib/accounts";
 import { deleteObject, putObject } from "../lib/object-store";
 
 async function allow(key) {
@@ -123,33 +123,46 @@ async function storeOwned(folder, file, types = IMAGE_TYPES) {
   return name;
 }
 
+const VEHICLE_FILE_KEYS = ["ownershipPath", "ownershipBackPath"];
+
 export async function saveVehicleAction(formData) {
   await allow("vehicles");
-  let ownershipPath = String(formData.get("ownershipPath") || "");
-  const file = formData.get("ownership");
-  if (formData.get("clearOwnership") === "1") {
-    await deleteObject("ownership", ownershipPath);
-    ownershipPath = "";
-  }
-  if (file && typeof file !== "string" && file.size) {
-    await deleteObject("ownership", ownershipPath);
-    ownershipPath = await storeOwned("ownership", file);
-  }
-  const id = await saveMaster("vehicles", {
+  const payload = {
     id: String(formData.get("id") || ""),
     vehicleNumber: String(formData.get("vehicleNumber") || ""),
     vehicleType: String(formData.get("vehicleType") || ""),
     category: String(formData.get("category") || ""),
     year: String(formData.get("year") || ""),
+    color: String(formData.get("color") || ""),
+    chassisNumber: String(formData.get("chassisNumber") || ""),
+    engineNumber: String(formData.get("engineNumber") || ""),
     notes: String(formData.get("notes") || ""),
     registrationExpiry: String(formData.get("registrationExpiry") || ""),
     ownershipExpiry: String(formData.get("ownershipExpiry") || ""),
-    ownershipPath,
-  });
-  revalidatePath("/vehicles");
-  revalidatePath("/vehicle-dashboard");
-  revalidatePath("/");
-  return id;
+    insuranceExpiry: String(formData.get("insuranceExpiry") || ""),
+  };
+  for (const key of VEHICLE_FILE_KEYS) {
+    let filePath = String(formData.get(key) || "");
+    if (formData.get(`clear_${key}`) === "1") {
+      await deleteObject("ownership", filePath);
+      filePath = "";
+    }
+    const file = formData.get(`file_${key}`);
+    if (file && typeof file !== "string" && file.size) {
+      await deleteObject("ownership", filePath);
+      filePath = await storeOwned("ownership", file);
+    }
+    payload[key] = filePath;
+  }
+  try {
+    const id = await saveMaster("vehicles", payload);
+    revalidatePath("/vehicles");
+    revalidatePath("/vehicle-dashboard");
+    revalidatePath("/");
+    return id;
+  } catch (error) {
+    return { error: String(error?.message || "saveFailed") };
+  }
 }
 
 const EMPLOYEE_FILE_KEYS = ["idPath", "passportPath", "licensePath"];
@@ -194,11 +207,17 @@ export async function saveEmployeeAction(formData) {
 export async function deleteMasterAction(kind, id) {
   await allow(kind);
   const employee = kind === "employees" ? await getEmployee(id) : null;
+  const vehicle = kind === "vehicles" ? await getVehicle(id) : null;
   const result = await deleteMaster(kind, id);
   if (result?.error) return result;
   if (employee) {
     for (const key of EMPLOYEE_FILE_KEYS) {
       await deleteObject("employee-files", employee[key]);
+    }
+  }
+  if (vehicle) {
+    for (const key of VEHICLE_FILE_KEYS) {
+      await deleteObject("ownership", vehicle[key]);
     }
   }
   revalidatePath(`/${kind}`);

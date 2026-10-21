@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus, Pencil, Search, Trash2, Wallet } from "lucide-react";
 import { deleteExpenseAction, saveExpenseAction } from "../app/actions";
+import DateField from "./DateField";
 import FilePick from "./FilePick";
 import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
@@ -216,7 +217,7 @@ export default function ExpensesDesk({ vehicles, general }) {
                     <input type="number" min="0" step="0.01" value={form.amount} onChange={(event) => update("amount", event.target.value)} />
                   </label>
                   <label>{t.date}
-                    <input type="date" value={form.date} onChange={(event) => update("date", event.target.value)} />
+                    <DateField value={form.date} onChange={(date) => update("date", date)} />
                   </label>
                   <label>{t.category}
                     <select value={form.category} onChange={(event) => update("category", event.target.value)}>

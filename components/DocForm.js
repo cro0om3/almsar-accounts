@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { saveInvoiceAction, saveQuoteAction } from "../app/actions";
+import DateField from "./DateField";
 import { useI18n } from "./I18nProvider";
 import { customerContact, customerTitle } from "../lib/party";
 import { aed, recomputeLine, summarize } from "../lib/money";
@@ -174,11 +175,11 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
               <input value={header.number} onChange={(event) => setHeader({ ...header, number: event.target.value })} />
             </label>
             <label>{t.date}
-              <input type="date" value={header.date} onChange={(event) => setHeader({ ...header, date: event.target.value })} />
+              <DateField value={header.date} onChange={(date) => setHeader({ ...header, date })} />
             </label>
             {isInvoice ? (
               <label>{t.dueDate}
-                <input type="date" value={header.dueDate} onChange={(event) => setHeader({ ...header, dueDate: event.target.value })} />
+                <DateField value={header.dueDate} onChange={(dueDate) => setHeader({ ...header, dueDate })} />
               </label>
             ) : null}
             <label>{t.status}
