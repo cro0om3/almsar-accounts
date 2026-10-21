@@ -40,6 +40,9 @@ async function readToken(token) {
 }
 
 export async function middleware(request) {
+  if (request.headers.has("next-action") || request.headers.has("Next-Action")) {
+    return NextResponse.next();
+  }
   const { pathname } = request.nextUrl;
   const session = await readToken(request.cookies.get("almsar_gate")?.value || "");
   if (pathname === "/login" || pathname === "/api/login") {
@@ -59,5 +62,10 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|logo.png|branding/).*)"],
+  matcher: [
+    {
+      source: "/((?!_next/static|_next/image|favicon.ico|logo.png|branding/).*)",
+      missing: [{ type: "header", key: "next-action" }],
+    },
+  ],
 };

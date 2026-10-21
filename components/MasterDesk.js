@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, ScanLine, Search } from "lucide-react";
 import { deleteMasterAction, saveEmployeeAction, saveMasterAction, saveVehicleAction } from "../app/actions";
+import { uploadOriginalFile } from "../lib/upload-file";
 import DateField from "./DateField";
 import FilePick from "./FilePick";
 import { flashSaved } from "./SavedToast";
@@ -189,7 +190,6 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
       if (back) {
         if (info.vehicleType) next.vehicleType = info.vehicleType;
         if (info.year) next.year = info.year;
-        if (info.color) next.color = info.color;
         if (info.chassisNumber) next.chassisNumber = info.chassisNumber;
       }
       setDraft(next);
@@ -204,12 +204,12 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     }
   }
 
-  function appendFileFields(body) {
+  async function appendFileFields(body) {
     for (const field of fileFields) {
       const slot = slotOf(field.key);
       body.set(field.key, slot.cleared ? "" : (current[field.key] || ""));
       if (slot.cleared) body.set(`clear_${field.key}`, "1");
-      if (slot.file) body.set(`file_${field.key}`, slot.file);
+      if (slot.file) body.set(field.key, await uploadOriginalFile(field.folder, slot.file));
     }
   }
 
@@ -228,7 +228,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
           if (field.file) continue;
           body.set(field.key, current[field.key] || "");
         }
-        appendFileFields(body);
+        await appendFileFields(body);
         const result = await saveVehicleAction(body);
         if (result?.error) throw new Error(result.error === "duplicateChassis" ? t.duplicateChassis : result.error === "duplicateVehicle" ? t.duplicateVehicle : result.error);
         id = result;
@@ -239,7 +239,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
           if (field.file) continue;
           body.set(field.key, current[field.key] ?? "");
         }
-        appendFileFields(body);
+        await appendFileFields(body);
         const result = await saveEmployeeAction(body);
         if (result?.error) throw new Error(result.error);
         id = result;
@@ -255,7 +255,15 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
       router.refresh();
     } catch (error) {
       setNoticeKind("err");
-      setNotice(error?.message && !/server components|digest/i.test(error.message) ? error.message : t.saveFailed);
+      const raw = String(error?.message || "");
+      setNotice(
+        raw === "duplicateChassis" ? t.duplicateChassis
+          : raw === "duplicateVehicle" ? t.duplicateVehicle
+            : raw === "fileTooLarge" ? t.fileTooLarge
+              : /unexpected response|failed to fetch|network|load failed/i.test(raw) ? t.saveFailedNetwork
+                : raw && !/server components|digest/i.test(raw) ? raw
+                  : t.saveFailed
+      );
     } finally {
       setSaving(false);
     }
@@ -374,6 +382,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                       <FilePick
                         key={field.key}
                         label={t[field.label] || field.label}
+                        accept="image/*,application/pdf,.heic,.heif"
                         file={slotOf(field.key).file}
                         preview={fileSrc(field)}
                         storedName={current[field.key]}
@@ -391,6 +400,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                   <FilePick
                     key={field.key}
                     label={t[field.label] || field.label}
+                    accept="image/*,application/pdf,.heic,.heif"
                     file={slotOf(field.key).file}
                     preview={fileSrc(field)}
                     storedName={current[field.key]}

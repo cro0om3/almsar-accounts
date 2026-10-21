@@ -8,7 +8,6 @@ const fields = [
   { key: "vehicleNumber", label: "vehicleNumber" },
   { key: "category", label: "vehicleCategory" },
   { key: "year", label: "yearMade", number: true },
-  { key: "color", label: "color" },
   { key: "chassisNumber", label: "chassisNumber" },
   { key: "ownershipExpiry", label: "ownershipExpiry", date: true },
   { key: "insuranceExpiry", label: "insuranceExpiry", date: true },

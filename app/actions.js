@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { deleteStaff, saveStaff, assertPermission } from "../lib/access";
 import { deleteCompanyFile, deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, deleteReceipt, getEmployee, getSettings, getVehicle, recordPayment, saveBrandingPaths, saveCompanyFile, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveReceipt, saveSettings, saveVehicleExpense, updateCompanyFile } from "../lib/accounts";
+import { makeUploadSlot } from "../lib/file-bucket";
 import { deleteObject, putObject } from "../lib/object-store";
 
 async function allow(key) {
@@ -108,53 +109,92 @@ export async function saveMasterAction(kind, payload) {
 
 const IMAGE_TYPES = {
   "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/pjpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
   "application/pdf": "pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
 };
 
+const FOLDER_PERMISSION = {
+  branding: "settings",
+  "company-files": "files",
+  "employee-files": "employees",
+  ownership: "vehicles",
+  "receipt-files": "receipts",
+  receipts: "receipts",
+};
+
+const SLOT_EXTS = new Set(["jpg", "jpeg", "png", "webp", "pdf", "heic", "heif", "docx"]);
+
+function sniffExt(file, types = IMAGE_TYPES) {
+  const type = String(file.type || "").toLowerCase();
+  if (types[type]) return types[type];
+  const name = String(file.name || "").toLowerCase();
+  const match = name.match(/\.([a-z0-9]+)$/);
+  if (match && SLOT_EXTS.has(match[1])) return match[1] === "jpeg" ? "jpg" : match[1];
+  return "";
+}
+
 async function storeOwned(folder, file, types = IMAGE_TYPES) {
   if (!file || typeof file === "string" || !file.size) return "";
-  const ext = types[file.type];
+  const ext = sniffExt(file, types);
   if (!ext) throw new Error("File must be a JPG, PNG, WEBP, or PDF");
   const name = `${randomUUID()}.${ext}`;
-  await putObject(folder, name, Buffer.from(await file.arrayBuffer()), file.type);
+  await putObject(folder, name, Buffer.from(await file.arrayBuffer()), file.type || "application/octet-stream");
   return name;
+}
+
+export async function createFileSlotAction(folder, ext, mime) {
+  try {
+    const permission = FOLDER_PERMISSION[folder];
+    if (!permission) return { error: "saveFailed" };
+    await allow(permission);
+    const safeExt = String(ext || "").toLowerCase().replace(/^\./, "");
+    if (!SLOT_EXTS.has(safeExt)) return { error: "File must be a JPG, PNG, WEBP, or PDF" };
+    const slot = await makeUploadSlot(folder, `${randomUUID()}.${safeExt === "jpeg" ? "jpg" : safeExt}`, mime || "");
+    if (!slot) return { error: "saveFailed" };
+    return slot;
+  } catch (error) {
+    return { error: String(error?.message || "saveFailed") };
+  }
 }
 
 const VEHICLE_FILE_KEYS = ["ownershipPath", "ownershipBackPath"];
 
 export async function saveVehicleAction(formData) {
-  await allow("vehicles");
-  const payload = {
-    id: String(formData.get("id") || ""),
-    vehicleNumber: String(formData.get("vehicleNumber") || ""),
-    vehicleType: String(formData.get("vehicleType") || ""),
-    category: String(formData.get("category") || ""),
-    year: String(formData.get("year") || ""),
-    color: String(formData.get("color") || ""),
-    chassisNumber: String(formData.get("chassisNumber") || ""),
-    engineNumber: String(formData.get("engineNumber") || ""),
-    notes: String(formData.get("notes") || ""),
-    registrationExpiry: String(formData.get("registrationExpiry") || ""),
-    ownershipExpiry: String(formData.get("ownershipExpiry") || ""),
-    insuranceExpiry: String(formData.get("insuranceExpiry") || ""),
-  };
-  for (const key of VEHICLE_FILE_KEYS) {
-    let filePath = String(formData.get(key) || "");
-    if (formData.get(`clear_${key}`) === "1") {
-      await deleteObject("ownership", filePath);
-      filePath = "";
-    }
-    const file = formData.get(`file_${key}`);
-    if (file && typeof file !== "string" && file.size) {
-      await deleteObject("ownership", filePath);
-      filePath = await storeOwned("ownership", file);
-    }
-    payload[key] = filePath;
-  }
   try {
+    await allow("vehicles");
+    const payload = {
+      id: String(formData.get("id") || ""),
+      vehicleNumber: String(formData.get("vehicleNumber") || ""),
+      vehicleType: String(formData.get("vehicleType") || ""),
+      category: String(formData.get("category") || ""),
+      year: String(formData.get("year") || ""),
+      color: String(formData.get("color") || ""),
+      chassisNumber: String(formData.get("chassisNumber") || ""),
+      engineNumber: String(formData.get("engineNumber") || ""),
+      notes: String(formData.get("notes") || ""),
+      registrationExpiry: String(formData.get("registrationExpiry") || ""),
+      ownershipExpiry: String(formData.get("ownershipExpiry") || ""),
+      insuranceExpiry: String(formData.get("insuranceExpiry") || ""),
+    };
+    for (const key of VEHICLE_FILE_KEYS) {
+      let filePath = String(formData.get(key) || "");
+      if (formData.get(`clear_${key}`) === "1") {
+        await deleteObject("ownership", filePath);
+        filePath = "";
+      }
+      const file = formData.get(`file_${key}`);
+      if (file && typeof file !== "string" && file.size) {
+        await deleteObject("ownership", filePath);
+        filePath = await storeOwned("ownership", file);
+      }
+      payload[key] = filePath;
+    }
     const id = await saveMaster("vehicles", payload);
     revalidatePath("/vehicles");
     revalidatePath("/vehicle-dashboard");
@@ -168,33 +208,33 @@ export async function saveVehicleAction(formData) {
 const EMPLOYEE_FILE_KEYS = ["idPath", "passportPath", "licensePath"];
 
 export async function saveEmployeeAction(formData) {
-  await allow("employees");
-  const payload = {
-    id: String(formData.get("id") || ""),
-    name: String(formData.get("name") || ""),
-    employeeId: String(formData.get("employeeId") || ""),
-    role: String(formData.get("role") || ""),
-    paymentType: String(formData.get("paymentType") || ""),
-    hourlyRate: String(formData.get("hourlyRate") || ""),
-    salary: String(formData.get("salary") || ""),
-    overtimeRate: String(formData.get("overtimeRate") || ""),
-    bankDetails: String(formData.get("bankDetails") || ""),
-    idExpiry: String(formData.get("idExpiry") || "").slice(0, 10),
-  };
-  for (const key of EMPLOYEE_FILE_KEYS) {
-    let filePath = String(formData.get(key) || "");
-    if (formData.get(`clear_${key}`) === "1") {
-      await deleteObject("employee-files", filePath);
-      filePath = "";
-    }
-    const file = formData.get(`file_${key}`);
-    if (file && typeof file !== "string" && file.size) {
-      await deleteObject("employee-files", filePath);
-      filePath = await storeOwned("employee-files", file);
-    }
-    payload[key] = filePath;
-  }
   try {
+    await allow("employees");
+    const payload = {
+      id: String(formData.get("id") || ""),
+      name: String(formData.get("name") || ""),
+      employeeId: String(formData.get("employeeId") || ""),
+      role: String(formData.get("role") || ""),
+      paymentType: String(formData.get("paymentType") || ""),
+      hourlyRate: String(formData.get("hourlyRate") || ""),
+      salary: String(formData.get("salary") || ""),
+      overtimeRate: String(formData.get("overtimeRate") || ""),
+      bankDetails: String(formData.get("bankDetails") || ""),
+      idExpiry: String(formData.get("idExpiry") || "").slice(0, 10),
+    };
+    for (const key of EMPLOYEE_FILE_KEYS) {
+      let filePath = String(formData.get(key) || "");
+      if (formData.get(`clear_${key}`) === "1") {
+        await deleteObject("employee-files", filePath);
+        filePath = "";
+      }
+      const file = formData.get(`file_${key}`);
+      if (file && typeof file !== "string" && file.size) {
+        await deleteObject("employee-files", filePath);
+        filePath = await storeOwned("employee-files", file);
+      }
+      payload[key] = filePath;
+    }
     const id = await saveMaster("employees", payload);
     revalidatePath("/employees");
     revalidatePath("/");
