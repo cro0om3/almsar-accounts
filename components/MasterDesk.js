@@ -2,8 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, ScanLine, Search } from "lucide-react";
+import { Loader2, Pencil, Plus, Save, ScanLine, Search, Trash2, X } from "lucide-react";
 import { deleteMasterAction, saveEmployeeAction, saveMasterAction, saveVehicleAction } from "../app/actions";
+import { daysUntil } from "../lib/dates";
 import { uploadOriginalFile } from "../lib/upload-file";
 import DateField from "./DateField";
 import FilePick from "./FilePick";
@@ -24,7 +25,9 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
   const [notice, setNotice] = useState("");
   const [noticeKind, setNoticeKind] = useState("");
   const [reading, setReading] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [uploads, setUploads] = useState(emptyUploads);
+  const canEdit = kind !== "vehicles" || editing;
   const fileRefs = useRef({});
   const scanRef = useRef(null);
   const scanSide = useRef("front");
@@ -43,7 +46,8 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
 
   function rowLines(row) {
     if (kind === "vehicles") {
-      return { primary: row.vehicleType || "—", secondary: row.vehicleNumber || "" };
+      const days = daysUntil(row.ownershipExpiry || row.registrationExpiry);
+      return { primary: row.vehicleType || "—", secondary: row.vehicleNumber || "", days };
     }
     if (kind === "customers") {
       const company = String(row.company || "").trim();
@@ -97,6 +101,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     setNoticeKind("");
     setDraft(next);
     setSelectedId("");
+    setEditing(true);
     resetUploads();
   }
 
@@ -105,6 +110,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     setDraft(null);
     setNotice("");
     setNoticeKind("");
+    setEditing(false);
     resetUploads();
     setSelectedId(row.id);
     requestAnimationFrame(() => {
@@ -213,8 +219,23 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     }
   }
 
+  function startEdit() {
+    setEditing(true);
+    setNotice("");
+    setNoticeKind("");
+  }
+
+  function cancelEdit() {
+    setDraft(null);
+    resetUploads();
+    setEditing(false);
+    setNotice("");
+    setNoticeKind("");
+  }
+
   async function save(event) {
     event.preventDefault();
+    if (kind === "vehicles" && !editing) return;
     const requiredKey = labelKey || fields[0].key;
     if (!current || !String(current[requiredKey] || "").trim()) return;
     setSaving(true);
@@ -251,6 +272,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
       setDraft(null);
       resetUploads();
       setSelectedId(id);
+      setEditing(false);
       flashSaved();
       router.refresh();
     } catch (error) {
@@ -279,6 +301,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     setNotice("");
     setDraft(null);
     resetUploads();
+    setEditing(false);
     setSelectedId("");
     router.refresh();
   }
@@ -302,10 +325,16 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
           <div className="desk-scroll">
             {visible.length === 0 ? <p className="desk-empty">{t.noRecords}</p> : visible.map((row) => {
               const lines = rowLines(row);
+              const dueClass = lines.days == null ? "" : lines.days < 0 ? "late" : lines.days <= 7 ? "late" : lines.days <= 30 ? "soon" : "ok";
               return (
                 <button id={`master-card-${row.id}`} key={row.id} type="button" className={row.id === current?.id && !draft ? "doc-row on" : "doc-row"} onClick={() => choose(row)}>
                   <b>{lines.primary}</b>
                   <small>{lines.secondary}</small>
+                  {lines.days != null ? (
+                    <em className={`doc-days ${dueClass}`}>
+                      {lines.days < 0 ? t.expiredShort : String(t.daysLeftShort).replace("{n}", String(lines.days))}
+                    </em>
+                  ) : null}
                 </button>
               );
             })}
@@ -315,7 +344,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
           {!current ? (
             <div className="desk-blank"><h2>{t.noRecords}</h2></div>
           ) : (
-            <form className="panel master-form" onSubmit={save}>
+            <form className={`panel master-form${kind === "vehicles" && !canEdit ? " locked" : ""}`} onSubmit={save}>
               <div className="master-form-top">
                 <h2>{(kind === "customers" ? (current.company || current.name) : current[labelKey]) || t.newRecord}</h2>
                 {kind === "employees" ? (
@@ -326,16 +355,23 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                 ) : null}
                 {kind === "vehicles" ? (
                   <span className="scan-pair">
-                    <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "front"; scanRef.current?.click(); }}>
-                      {reading && scanSide.current === "front" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
-                      {t.scanFront}
-                    </button>
-                    <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "back"; scanRef.current?.click(); }}>
-                      {reading && scanSide.current === "back" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
-                      {t.scanBack}
-                    </button>
-                    <button className="btn" type="submit" disabled={saving}>{t.save}</button>
-                    {current.id ? <button className="btn danger" type="button" onClick={remove}>{t.delete}</button> : null}
+                    {canEdit ? (
+                      <>
+                        <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "front"; scanRef.current?.click(); }}>
+                          {reading && scanSide.current === "front" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
+                          {t.scanFront}
+                        </button>
+                        <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "back"; scanRef.current?.click(); }}>
+                          {reading && scanSide.current === "back" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
+                          {t.scanBack}
+                        </button>
+                        <button className="btn" type="submit" disabled={saving}><Save size={16} /> {t.save}</button>
+                        {current.id ? <button className="btn ghost" type="button" onClick={cancelEdit}><X size={16} /> {t.cancel}</button> : null}
+                      </>
+                    ) : (
+                      <button className="btn" type="button" onClick={startEdit}><Pencil size={16} /> {t.edit}</button>
+                    )}
+                    {current.id ? <button className="btn danger" type="button" onClick={remove}><Trash2 size={16} /> {t.delete}</button> : null}
                   </span>
                 ) : null}
               </div>
@@ -362,17 +398,17 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                 {fields.filter((field) => !field.file).map((field) => (
                   <label key={field.key} className={field.long ? "span-2" : undefined}>{t[field.label] || field.label}
                     {field.long ? (
-                      <textarea value={current[field.key] || ""} onChange={(event) => update(field.key, event.target.value)} />
+                      <textarea value={current[field.key] || ""} disabled={!canEdit} readOnly={!canEdit} onChange={(event) => update(field.key, event.target.value)} />
                     ) : field.options ? (
-                      <select value={current[field.key] || ""} onChange={(event) => update(field.key, event.target.value)}>
+                      <select value={current[field.key] || ""} disabled={!canEdit} onChange={(event) => update(field.key, event.target.value)}>
                         <option value="">—</option>
                         {field.options.map((value) => <option key={value} value={value}>{t[`kind_${value}`] || value}</option>)}
                       </select>
                     ) : (
                       field.date ? (
-                        <DateField value={current[field.key]} onChange={(next) => update(field.key, next)} />
+                        <DateField value={current[field.key]} disabled={!canEdit} onChange={(next) => update(field.key, next)} />
                       ) : (
-                        <input type={field.number ? "number" : "text"} value={current[field.key] ?? ""} onChange={(event) => update(field.key, event.target.value)} />
+                        <input type={field.number ? "number" : "text"} value={current[field.key] ?? ""} disabled={!canEdit} readOnly={!canEdit} onChange={(event) => update(field.key, event.target.value)} />
                       )
                     )}
                   </label>
@@ -389,6 +425,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                         preview={fileSrc(field)}
                         storedName={current[field.key]}
                         inputRef={(el) => { fileRefs.current[field.key] = el; }}
+                        disabled={!canEdit}
                         onChange={(file) => {
                           if (kind === "vehicles" && (field.key === "ownershipPath" || field.key === "ownershipBackPath") && file) void readOwnership([file], field.key);
                           else if (kind === "employees" && field.key === "idPath" && file) void readIdPhoto(file);
@@ -407,6 +444,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                     preview={fileSrc(field)}
                     storedName={current[field.key]}
                     inputRef={(el) => { fileRefs.current[field.key] = el; }}
+                    disabled={!canEdit}
                     onChange={(file) => {
                       if (kind === "vehicles" && (field.key === "ownershipPath" || field.key === "ownershipBackPath") && file) void readOwnership([file], field.key);
                       else if (kind === "employees" && field.key === "idPath" && file) void readIdPhoto(file);
@@ -418,8 +456,8 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
               </div>
               {kind === "vehicles" ? null : (
                 <div className="detail-actions">
-                  <button className="btn" type="submit" disabled={saving}>{t.save}</button>
-                  {current.id ? <button className="btn danger" type="button" onClick={remove}>{t.delete}</button> : null}
+                  <button className="btn" type="submit" disabled={saving}><Save size={16} /> {t.save}</button>
+                  {current.id ? <button className="btn danger" type="button" onClick={remove}><Trash2 size={16} /> {t.delete}</button> : null}
                 </div>
               )}
             </form>

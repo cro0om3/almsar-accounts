@@ -233,6 +233,10 @@ img { max-width: 100%; display: block; }
 
 .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: var(--blue);
   color: white;
   border: 0;
@@ -341,7 +345,20 @@ input, select, textarea {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  position: relative;
 }
+.doc-row .doc-days {
+  align-self: flex-start;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+  padding: 0;
+  background: none;
+  color: #067647;
+}
+.doc-row .doc-days.soon { color: #b54708; }
+.doc-row .doc-days.late { color: #b42318; }
 .doc-row.on, .finance-card.on { background: #eef4ff; box-shadow: inset 4px 0 0 var(--blue); }
 [dir="rtl"] .doc-row.on, [dir="rtl"] .finance-card.on { box-shadow: inset -4px 0 0 var(--blue); }
 .doc-row-top { display: flex; justify-content: space-between; gap: 12px; }
@@ -454,6 +471,15 @@ input, select, textarea {
 .finance-card em { font-style: normal; color: var(--muted); font-size: 13px; margin-top: 8px; }
 .vehicle-swipe { display: flex; flex-direction: column; min-width: 0; }
 .master-form { min-width: 0; }
+.master-form.locked .master-grid input,
+.master-form.locked .master-grid textarea,
+.master-form.locked .master-grid select {
+  background: #f8fafc;
+  cursor: default;
+}
+.file-pick.locked .file-pick-row { cursor: default; }
+.file-pick.locked .file-pick-row:hover { border-color: var(--line); }
+.date-field.locked .date-field-picker { display: none; }
 .master-form h2 { margin: 0 0 14px; font-size: 22px; }
 .master-form .master-form-top h2 { margin: 0; }
 .master-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
@@ -770,6 +796,14 @@ input.file-pick-input {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .desk-scroll .doc-row .doc-days {
+    font-size: 10px;
+    font-weight: 750;
+    margin-top: 1px;
+    max-width: 100%;
+    background: none;
+    padding: 0;
   }
   .desk-scroll .doc-row small, .desk-scroll .doc-row > div, .desk-scroll .finance-card span,
   .vehicle-swipe .finance-card span, .vehicle-swipe .finance-card em, .desk-scroll .finance-card em {

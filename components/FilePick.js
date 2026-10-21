@@ -41,6 +41,7 @@ export default function FilePick({
   onClear,
   inputRef,
   allowClear = true,
+  disabled = false,
 }) {
   const { t } = useI18n();
   const innerRef = useRef(null);
@@ -80,7 +81,7 @@ export default function FilePick({
   }
 
   return (
-    <label className={`file-pick${has ? " has" : ""}`}>
+    <label className={`file-pick${has ? " has" : ""}${disabled ? " locked" : ""}`}>
       {label ? <span className="file-pick-label">{label}</span> : null}
       <span className="file-pick-row" title={t.receiptHint}>
         {src ? (
@@ -103,20 +104,22 @@ export default function FilePick({
             <Download size={14} />
           </a>
         ) : null}
-        {has && allowClear ? (
+        {has && allowClear && !disabled ? (
           <button className="file-pick-x" type="button" aria-label={t.removePhoto} onClick={clear}>
             <X size={14} />
           </button>
         ) : null}
-        <input
-          ref={bindRef}
-          className="file-pick-input"
-          type="file"
-          name={name}
-          accept={accept}
-          required={required && !has}
-          onChange={(event) => onChange?.(event.target.files?.[0] || null)}
-        />
+        {disabled ? null : (
+          <input
+            ref={bindRef}
+            className="file-pick-input"
+            type="file"
+            name={name}
+            accept={accept}
+            required={required && !has}
+            onChange={(event) => onChange?.(event.target.files?.[0] || null)}
+          />
+        )}
       </span>
     </label>
   );
