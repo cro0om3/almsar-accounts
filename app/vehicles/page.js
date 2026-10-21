@@ -10,7 +10,7 @@ const fields = [
   { key: "year", label: "yearMade", number: true },
   { key: "notes", label: "notes", long: true },
   { key: "ownershipExpiry", label: "ownershipExpiry", date: true },
-  { key: "ownershipPath", label: "ownershipPhoto", file: true },
+  { key: "ownershipPath", label: "ownershipPhoto", file: true, folder: "ownership" },
 ];
 
 export default async function VehiclesPage({ searchParams }) {

@@ -2,8 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, ImagePlus, Pencil, Search, Trash2, Wallet, X } from "lucide-react";
+import { ImagePlus, Pencil, Search, Trash2, Wallet } from "lucide-react";
 import { deleteExpenseAction, saveExpenseAction } from "../app/actions";
+import FilePick from "./FilePick";
 import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
@@ -225,34 +226,20 @@ export default function ExpensesDesk({ vehicles, general }) {
                   <label>{t.notes}
                     <textarea value={form.notes} onChange={(event) => update("notes", event.target.value)} />
                   </label>
-                  <label className="receipt-wrap">{t.receipt}
-                    <span className="receipt-box">
-                      <ImagePlus size={18} />
-                      <span>{form.receipt ? form.receipt.name : t.receiptHint}</span>
-                      <input ref={fileRef} className="receipt-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => {
-                        const file = event.target.files?.[0] || null;
-                        setForm((current) => ({ ...current, receipt: file, preview: file ? URL.createObjectURL(file) : "", clearReceipt: false }));
-                      }} />
-                    </span>
-                  </label>
+                  <FilePick
+                    label={t.receipt}
+                    file={form.receipt}
+                    preview={form.receiptPath && !form.clearReceipt ? `/api/receipts/${form.receiptPath}` : ""}
+                    storedName={form.receiptPath}
+                    inputRef={fileRef}
+                    onChange={(file) => setForm((current) => ({ ...current, receipt: file, preview: "", clearReceipt: false }))}
+                    onClear={() => setForm((current) => ({ ...current, receipt: null, preview: "", receiptPath: "", clearReceipt: true }))}
+                  />
                 </div>
-                {(form.preview || (form.receiptPath && !form.clearReceipt) || form.receipt) ? (
-                  <div className="receipt-chosen">
-                    {isPdf(form.receipt, form.receiptPath) ? (
-                      <a className="pdf-chip" href={form.preview || `/api/receipts/${form.receiptPath}`} target="_blank" rel="noreferrer"><FileText size={16} /> PDF</a>
-                    ) : (
-                      <img className="receipt-preview" src={form.preview || `/api/receipts/${form.receiptPath}`} alt="" />
-                    )}
-                    <button className="btn ghost" type="button" onClick={() => {
-                      if (fileRef.current) fileRef.current.value = "";
-                      setForm((current) => ({ ...current, receipt: null, preview: "", receiptPath: "", clearReceipt: true }));
-                    }}>
-                      <X size={16} /> {t.removePhoto}
-                    </button>
-                  </div>
-                ) : null}
                 {error ? <div className="errors">{error}</div> : null}
-                <button className="btn" type="submit" disabled={saving}>{t.save}</button>
+                <div className="detail-actions">
+                  <button className="btn" type="submit" disabled={saving}>{t.save}</button>
+                </div>
               </form>
               <div className="expense-list">
                 {history.length === 0 ? <p className="desk-empty">{mode === "vehicle" ? t.noExpenses : t.noGeneral}</p> : history.map((row) => (

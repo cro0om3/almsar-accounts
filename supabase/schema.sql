@@ -36,6 +36,9 @@ create table if not exists employees (
   salary double precision,
   "overtimeRate" double precision,
   "bankDetails" text,
+  "idPath" text,
+  "passportPath" text,
+  "licensePath" text,
   "createdAt" timestamptz
 );
 

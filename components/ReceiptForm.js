@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText } from "lucide-react";
 import { saveReceiptAction } from "../app/actions";
+import FilePick from "./FilePick";
 import { useI18n } from "./I18nProvider";
 import { customerContact, customerTitle } from "../lib/party";
 import { aed } from "../lib/money";
@@ -23,7 +23,6 @@ export default function ReceiptForm({ doc, customers, invoices }) {
   const [header, setHeader] = useState(doc);
   const [picked, setPicked] = useState(() => Object.fromEntries((doc.allocations || []).map((line) => [line.invoiceId, cents(line.amount).toFixed(2)])));
   const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState("");
   const [clearFile, setClearFile] = useState(false);
   const [error, setError] = useState("");
   const savedOnReceipt = useMemo(
@@ -51,9 +50,7 @@ export default function ReceiptForm({ doc, customers, invoices }) {
     ["cheque", t.methodCheque],
     ["card", t.methodCard],
   ];
-  const proofName = file?.name || (!clearFile && header.filePath ? header.filePath : "");
-  const proofUrl = preview || (!clearFile && header.filePath ? `/api/receipt-files/${header.filePath}` : "");
-  const proofPdf = /\.pdf$/i.test(proofName);
+  const proofUrl = !clearFile && header.filePath ? `/api/receipt-files/${header.filePath}` : "";
 
   function chooseCustomer(customerId) {
     setHeader((current) => ({ ...current, customerId }));
@@ -196,22 +193,17 @@ export default function ReceiptForm({ doc, customers, invoices }) {
             <label>{t.receiptNote}
               <textarea rows={3} value={header.notes || ""} onChange={(event) => setHeader({ ...header, notes: event.target.value })} />
             </label>
-            <div className="proof-box">
-              <span>{t.receiptFile}</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => {
-                const next = event.target.files?.[0] || null;
+            <FilePick
+              label={t.receiptFile}
+              file={file}
+              preview={proofUrl}
+              storedName={header.filePath}
+              onChange={(next) => {
                 setFile(next);
-                setPreview(next ? URL.createObjectURL(next) : "");
                 setClearFile(false);
-              }} />
-              <em>{t.receiptHint}</em>
-              {proofUrl ? (
-                <div className="proof-row">
-                  {proofPdf ? <a className="pdf-chip" href={proofUrl} target="_blank" rel="noreferrer">{proofName}</a> : <img src={proofUrl} alt="" />}
-                  <button className="btn ghost" type="button" onClick={() => { setFile(null); setPreview(""); setClearFile(true); }}>{t.removePhoto}</button>
-                </div>
-              ) : null}
-            </div>
+              }}
+              onClear={() => { setFile(null); setClearFile(true); }}
+            />
           </section>
           <section className="panel summary-panel">
             <h2>{t.summary}</h2>

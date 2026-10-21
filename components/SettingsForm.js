@@ -7,6 +7,7 @@ import { deleteStaffAction, saveBrandingAction, saveSettingsAction, saveStaffAct
 import { flashSaved } from "./SavedToast";
 import { ACCOUNTANT_PERMISSIONS, PERMISSIONS } from "../lib/permissions";
 import CompanyFiles from "./CompanyFiles";
+import FilePick from "./FilePick";
 import { useI18n } from "./I18nProvider";
 
 function plainTerms(value) {
@@ -64,6 +65,7 @@ export default function SettingsForm({ settings, files, staff }) {
   const [saved, setSaved] = useState(false);
   const [person, setPerson] = useState(emptyStaff);
   const [staffError, setStaffError] = useState("");
+  const [brandPick, setBrandPick] = useState({});
   const stamp = settings.updatedAt || "0";
 
   function update(key, value) {
@@ -112,8 +114,10 @@ export default function SettingsForm({ settings, files, staff }) {
             <label className="span-2">{t.address}<textarea value={form.address} onChange={(event) => update("address", event.target.value)} /></label>
             <label className="span-2">{t.defaultTerms}<textarea value={form.defaultTerms} onChange={(event) => update("defaultTerms", event.target.value)} /></label>
           </div>
-          <button className="btn" type="submit">{t.save}</button>
-          {saved ? <span className="green"> {t.saved}</span> : null}
+          <div className="detail-actions">
+            <button className="btn" type="submit">{t.save}</button>
+            {saved ? <span className="green">{t.saved}</span> : null}
+          </div>
         </form>
       ) : null}
 
@@ -128,15 +132,23 @@ export default function SettingsForm({ settings, files, staff }) {
           <p className="lead">{t.brandingLead}</p>
           <div className="brand-grid">
             {["logo", "seal", "signature"].map((slot) => (
-              <label key={slot}>
-                {t[slot]}
-                <img src={`/api/branding/${slot}?v=${stamp}`} alt="" />
-                <input name={slot} type="file" accept="image/jpeg,image/png,image/webp" />
-              </label>
+              <FilePick
+                key={slot}
+                name={slot}
+                label={t[slot]}
+                accept="image/jpeg,image/png,image/webp"
+                file={brandPick[slot] || null}
+                preview={`/api/branding/${slot}?v=${stamp}`}
+                allowClear={Boolean(brandPick[slot])}
+                onChange={(next) => setBrandPick((current) => ({ ...current, [slot]: next }))}
+                onClear={() => setBrandPick((current) => ({ ...current, [slot]: null }))}
+              />
             ))}
           </div>
-          <button className="btn" type="submit">{t.save}</button>
-          {saved ? <span className="green"> {t.saved}</span> : null}
+          <div className="detail-actions">
+            <button className="btn" type="submit">{t.save}</button>
+            {saved ? <span className="green">{t.saved}</span> : null}
+          </div>
         </form>
       ) : null}
 
@@ -195,10 +207,10 @@ export default function SettingsForm({ settings, files, staff }) {
                 {t.activeAccess}
               </label>
             )}
-            <div className="span-2">
+            <div className="span-2 detail-actions">
               <button className="btn" type="submit">{person.id ? t.save : t.addStaff}</button>
               {person.id ? <button className="btn ghost" type="button" onClick={() => { setPerson(emptyStaff()); setStaffError(""); }}>{t.cancel}</button> : null}
-              {staffError ? <span className="red"> {staffError}</span> : null}
+              {staffError ? <span className="red">{staffError}</span> : null}
             </div>
           </form>
           <div className="file-list">

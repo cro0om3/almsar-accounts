@@ -2,10 +2,15 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, ImagePlus, Plus, Search, X } from "lucide-react";
-import { deleteMasterAction, saveMasterAction, saveVehicleAction } from "../app/actions";
+import { Plus, Search } from "lucide-react";
+import { deleteMasterAction, saveEmployeeAction, saveMasterAction, saveVehicleAction } from "../app/actions";
+import FilePick from "./FilePick";
 import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
+
+function emptyUploads() {
+  return {};
+}
 
 export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, initialId = "" }) {
   const { t } = useI18n();
@@ -15,8 +20,9 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
-  const [photo, setPhoto] = useState({ file: null, preview: "", cleared: false });
-  const fileRef = useRef(null);
+  const [uploads, setUploads] = useState(emptyUploads);
+  const fileRefs = useRef({});
+  const fileFields = fields.filter((field) => field.file);
 
   const visible = useMemo(() => {
     const text = query.trim().toLowerCase();
@@ -42,6 +48,36 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     return { primary: row[labelKey] || "—", secondary: subtitle ? (row[subtitle.key] || "") : "" };
   }
 
+  function slotOf(key) {
+    return uploads[key] || { file: null, preview: "", cleared: false };
+  }
+
+  function setSlot(key, next) {
+    setUploads((prev) => {
+      if (prev[key]?.preview && prev[key].preview !== next.preview) URL.revokeObjectURL(prev[key].preview);
+      return { ...prev, [key]: next };
+    });
+  }
+
+  function resetUploads() {
+    setUploads((prev) => {
+      for (const slot of Object.values(prev)) {
+        if (slot.preview) URL.revokeObjectURL(slot.preview);
+      }
+      return emptyUploads();
+    });
+    Object.values(fileRefs.current).forEach((el) => {
+      if (el) el.value = "";
+    });
+  }
+
+  function fileSrc(field) {
+    const slot = slotOf(field.key);
+    if (slot.preview) return slot.preview;
+    if (!slot.cleared && current?.[field.key]) return `/api/${field.folder || "ownership"}/${current[field.key]}`;
+    return "";
+  }
+
   function blank() {
     const next = { id: "" };
     fields.forEach((field) => {
@@ -49,15 +85,13 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     });
     setDraft(next);
     setSelectedId("");
-    setPhoto({ file: null, preview: "", cleared: false });
-    if (fileRef.current) fileRef.current.value = "";
+    resetUploads();
   }
 
   function choose(row) {
     setDraft(null);
     setNotice("");
-    setPhoto({ file: null, preview: "", cleared: false });
-    if (fileRef.current) fileRef.current.value = "";
+    resetUploads();
     setSelectedId(row.id);
     requestAnimationFrame(() => {
       document.getElementById(`master-card-${row.id}`)?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
@@ -78,6 +112,15 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     return next;
   }
 
+  function appendFileFields(body) {
+    for (const field of fileFields) {
+      const slot = slotOf(field.key);
+      body.set(field.key, slot.cleared ? "" : (current[field.key] || ""));
+      if (slot.cleared) body.set(`clear_${field.key}`, "1");
+      if (slot.file) body.set(`file_${field.key}`, slot.file);
+    }
+  }
+
   async function save(event) {
     event.preventDefault();
     const requiredKey = labelKey || fields[0].key;
@@ -87,6 +130,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     try {
       let id = current.id;
       if (kind === "vehicles") {
+        const photo = slotOf("ownershipPath");
         const body = new FormData();
         body.set("id", current.id || "");
         for (const field of fields) {
@@ -97,13 +141,24 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
         if (photo.cleared) body.set("clearOwnership", "1");
         if (photo.file) body.set("ownership", photo.file);
         id = await saveVehicleAction(body);
+      } else if (kind === "employees" && fileFields.length) {
+        const body = new FormData();
+        body.set("id", current.id || "");
+        for (const field of fields) {
+          if (field.file) continue;
+          body.set(field.key, current[field.key] ?? "");
+        }
+        appendFileFields(body);
+        const result = await saveEmployeeAction(body);
+        if (result?.error) throw new Error(result.error);
+        id = result;
       } else {
         const result = await saveMasterAction(kind, payload());
         if (result?.error) throw new Error(result.error);
         id = result;
       }
       setDraft(null);
-      setPhoto({ file: null, preview: "", cleared: false });
+      resetUploads();
       setSelectedId(id);
       flashSaved();
       router.refresh();
@@ -123,6 +178,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     }
     setNotice("");
     setDraft(null);
+    resetUploads();
     setSelectedId("");
     router.refresh();
   }
@@ -176,34 +232,35 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                     )}
                   </label>
                 ))}
+                {fileFields.length > 1 ? <div className="file-picks-title span-2">{t.employeeDocuments}</div> : null}
+                {fileFields.length > 1 ? (
+                  <div className="file-picks span-2">
+                    {fileFields.map((field) => (
+                      <FilePick
+                        key={field.key}
+                        label={t[field.label] || field.label}
+                        file={slotOf(field.key).file}
+                        preview={fileSrc(field)}
+                        storedName={current[field.key]}
+                        inputRef={(el) => { fileRefs.current[field.key] = el; }}
+                        onChange={(file) => setSlot(field.key, { file, preview: "", cleared: false })}
+                        onClear={() => setSlot(field.key, { file: null, preview: "", cleared: true })}
+                      />
+                    ))}
+                  </div>
+                ) : fileFields.map((field) => (
+                  <FilePick
+                    key={field.key}
+                    label={t[field.label] || field.label}
+                    file={slotOf(field.key).file}
+                    preview={fileSrc(field)}
+                    storedName={current[field.key]}
+                    inputRef={(el) => { fileRefs.current[field.key] = el; }}
+                    onChange={(file) => setSlot(field.key, { file, preview: "", cleared: false })}
+                    onClear={() => setSlot(field.key, { file: null, preview: "", cleared: true })}
+                  />
+                ))}
               </div>
-              {fields.some((field) => field.file) ? (
-                <label className="receipt-wrap">{t.ownershipPhoto}
-                  <span className="receipt-box">
-                    <ImagePlus size={18} />
-                    <span>{photo.file ? photo.file.name : t.receiptHint}</span>
-                    <input ref={fileRef} className="receipt-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => {
-                      const file = event.target.files?.[0] || null;
-                      setPhoto({ file, preview: file ? URL.createObjectURL(file) : "", cleared: false });
-                    }} />
-                  </span>
-                </label>
-              ) : null}
-              {fields.some((field) => field.file) && (photo.preview || photo.file || (!photo.cleared && current.ownershipPath)) ? (
-                <div className="receipt-chosen">
-                  {(photo.file?.type === "application/pdf" || /\.pdf$/i.test(photo.file?.name || "") || (!photo.file && /\.pdf$/i.test(current.ownershipPath || ""))) ? (
-                    <a className="pdf-chip" href={photo.preview || `/api/ownership/${current.ownershipPath}`} target="_blank" rel="noreferrer"><FileText size={16} /> PDF</a>
-                  ) : (
-                    <img className="receipt-preview" src={photo.preview || `/api/ownership/${current.ownershipPath}`} alt="" />
-                  )}
-                  <button className="btn ghost" type="button" onClick={() => {
-                    if (fileRef.current) fileRef.current.value = "";
-                    setPhoto({ file: null, preview: "", cleared: true });
-                  }}>
-                    <X size={16} /> {t.removePhoto}
-                  </button>
-                </div>
-              ) : null}
               {notice ? <div className="errors">{notice}</div> : null}
               <div className="detail-actions">
                 <button className="btn" type="submit" disabled={saving}>{t.save}</button>

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { deleteStaff, saveStaff, assertPermission } from "../lib/access";
-import { deleteCompanyFile, deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, deleteReceipt, getSettings, recordPayment, saveBrandingPaths, saveCompanyFile, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveReceipt, saveSettings, saveVehicleExpense, updateCompanyFile } from "../lib/accounts";
+import { deleteCompanyFile, deleteExpense, deleteInvoice, deleteMaster, deletePurchaseOrder, deleteQuote, deleteReceipt, getEmployee, getSettings, recordPayment, saveBrandingPaths, saveCompanyFile, saveCustomer, saveGeneralExpense, saveInvoice, saveMaster, savePayslip, savePurchaseOrder, saveQuote, saveReceipt, saveSettings, saveVehicleExpense, updateCompanyFile } from "../lib/accounts";
 import { deleteObject, putObject } from "../lib/object-store";
 
 async function allow(key) {
@@ -111,6 +111,7 @@ const IMAGE_TYPES = {
   "image/png": "png",
   "image/webp": "webp",
   "application/pdf": "pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
 };
 
 async function storeOwned(folder, file, types = IMAGE_TYPES) {
@@ -151,10 +152,54 @@ export async function saveVehicleAction(formData) {
   return id;
 }
 
+const EMPLOYEE_FILE_KEYS = ["idPath", "passportPath", "licensePath"];
+
+export async function saveEmployeeAction(formData) {
+  await allow("employees");
+  const payload = {
+    id: String(formData.get("id") || ""),
+    name: String(formData.get("name") || ""),
+    employeeId: String(formData.get("employeeId") || ""),
+    role: String(formData.get("role") || ""),
+    paymentType: String(formData.get("paymentType") || ""),
+    hourlyRate: String(formData.get("hourlyRate") || ""),
+    salary: String(formData.get("salary") || ""),
+    overtimeRate: String(formData.get("overtimeRate") || ""),
+    bankDetails: String(formData.get("bankDetails") || ""),
+  };
+  for (const key of EMPLOYEE_FILE_KEYS) {
+    let filePath = String(formData.get(key) || "");
+    if (formData.get(`clear_${key}`) === "1") {
+      await deleteObject("employee-files", filePath);
+      filePath = "";
+    }
+    const file = formData.get(`file_${key}`);
+    if (file && typeof file !== "string" && file.size) {
+      await deleteObject("employee-files", filePath);
+      filePath = await storeOwned("employee-files", file);
+    }
+    payload[key] = filePath;
+  }
+  try {
+    const id = await saveMaster("employees", payload);
+    revalidatePath("/employees");
+    revalidatePath("/");
+    return id;
+  } catch (error) {
+    return { error: String(error?.message || "saveFailed") };
+  }
+}
+
 export async function deleteMasterAction(kind, id) {
   await allow(kind);
+  const employee = kind === "employees" ? await getEmployee(id) : null;
   const result = await deleteMaster(kind, id);
   if (result?.error) return result;
+  if (employee) {
+    for (const key of EMPLOYEE_FILE_KEYS) {
+      await deleteObject("employee-files", employee[key]);
+    }
+  }
   revalidatePath(`/${kind}`);
   revalidatePath("/");
   return result;

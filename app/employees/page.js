@@ -12,6 +12,9 @@ const fields = [
   { key: "salary", label: "salary", number: true },
   { key: "overtimeRate", label: "overtimeRate", number: true },
   { key: "bankDetails", label: "bankDetails", long: true },
+  { key: "idPath", label: "emiratesIdPhoto", file: true, folder: "employee-files" },
+  { key: "passportPath", label: "passportPhoto", file: true, folder: "employee-files" },
+  { key: "licensePath", label: "employeeLicense", file: true, folder: "employee-files" },
 ];
 
 export default async function EmployeesPage() {

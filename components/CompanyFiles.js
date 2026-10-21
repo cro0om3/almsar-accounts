@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteCompanyFileAction, saveCompanyFileAction, updateCompanyFileAction } from "../app/actions";
+import FilePick from "./FilePick";
 import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
 
@@ -14,10 +15,12 @@ export default function CompanyFiles({ files, heading = false }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [editor, setEditor] = useState(null);
+  const [picked, setPicked] = useState(null);
   const labels = { license: t.fileLicense, papers: t.filePapers, other: t.fileOther };
 
   function openNew() {
     setError("");
+    setPicked(null);
     setEditor({ ...emptyForm });
   }
 
@@ -43,6 +46,7 @@ export default function CompanyFiles({ files, heading = false }) {
       return;
     }
     setEditor(null);
+    setPicked(null);
     flashSaved();
     router.refresh();
   }
@@ -70,16 +74,24 @@ export default function CompanyFiles({ files, heading = false }) {
             </select>
           </label>
           {editor.id ? null : (
-            <label className="span-2">{t.uploadFile}
-              <input name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
-            </label>
+            <div className="span-2">
+              <FilePick
+                name="file"
+                label={t.uploadFile}
+                required
+                file={picked}
+                accept="image/jpeg,image/png,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={setPicked}
+                onClear={() => setPicked(null)}
+              />
+            </div>
           )}
           <label className="span-2">{t.notes}
             <textarea name="notes" value={editor.notes} onChange={(event) => setEditor({ ...editor, notes: event.target.value })} />
           </label>
           <div className="files-form-actions span-2">
             <button className="btn" type="submit">{t.save}</button>
-            <button className="btn ghost" type="button" onClick={() => setEditor(null)}>{t.cancel}</button>
+            <button className="btn ghost" type="button" onClick={() => { setEditor(null); setPicked(null); }}>{t.cancel}</button>
             {error ? <span className="red">{error}</span> : null}
           </div>
         </form>
@@ -97,7 +109,7 @@ export default function CompanyFiles({ files, heading = false }) {
               </span>
               <span className="file-actions">
                 <button className="icon-btn" type="button" aria-label={t.edit} onClick={() => openEdit(file)}><Pencil size={16} /></button>
-                <a className="icon-btn" href={`/api/company-files/${file.storedName}`} target="_blank" rel="noreferrer" aria-label={t.download}><Download size={16} /></a>
+                <a className="icon-btn" href={`/api/company-files/${file.storedName}?download=1`} download={file.title || file.storedName} aria-label={t.download}><Download size={16} /></a>
                 <button className="icon-btn danger" type="button" aria-label={t.delete} onClick={async () => {
                   await deleteCompanyFileAction(file.id);
                   router.refresh();

@@ -84,8 +84,10 @@ export default function PoForm({ doc, vendors, vehicles }) {
             <button className="sq xls" type="button" title="Excel" onClick={async () => { const { downloadExcel } = await import("../lib/download-doc"); downloadExcel("po", { ...payload(), customerName: vendor?.name }, vendor); }}><FileSpreadsheet size={16} /></button>
             <button className="sq print" type="button" title="Print" onClick={async () => { const { printDocument } = await import("../lib/download-doc"); printDocument("po", { ...payload(), customerName: vendor?.name }, vendor); }}><Printer size={16} /></button>
           </div>
-          <button className="btn save" type="submit" disabled={!header.vendorId}>{t.save}</button>
-          <button className="cancel" type="button" onClick={() => router.push("/purchase-orders")}>{t.cancel}</button>
+          <div className="form-actions">
+            <button className="btn save" type="submit" disabled={!header.vendorId}>{t.save}</button>
+            <button className="cancel" type="button" onClick={() => router.push("/purchase-orders")}>{t.cancel}</button>
+          </div>
         </section>
       </div>
       <section className="panel" style={{ marginTop: 14 }}>

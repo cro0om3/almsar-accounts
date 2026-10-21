@@ -352,8 +352,37 @@ input, select, textarea {
 .detail-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
 .detail-top h2 { margin: 0; font-size: 26px; display: flex; gap: 8px; align-items: center; }
 .detail-top p { margin: 4px 0 0; color: var(--muted); }
-.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-.detail-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.detail-actions,
+.form-actions,
+.files-form-actions,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.detail-actions .btn,
+.form-actions .btn,
+.files-form-actions .btn,
+.action-row .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.detail-actions .btn.danger,
+.form-actions .btn.danger,
+.action-row .btn.danger {
+  margin-inline-start: auto;
+}
+.form-actions .save,
+.form-actions .cancel {
+  width: auto;
+  margin: 0;
+}
 .detail-cards { display: grid; grid-template-columns: 1.2fr .8fr; gap: 12px; }
 .detail-cards.three { grid-template-columns: repeat(3, 1fr); }
 .detail-cards .panel b { font-size: 14px; font-weight: 600; line-height: 1.4; }
@@ -424,13 +453,100 @@ input, select, textarea {
 .master-grid input[type="date"] { display: block; }
 .master-grid input[type="date"]::-webkit-datetime-edit { min-width: 0; }
 .master-grid textarea { resize: vertical; min-height: 92px; }
-.master-form .receipt-wrap { margin-top: 16px; min-width: 0; clear: both; }
+.file-picks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.file-picks-title { margin: 6px 0 0; font-size: 13px; font-weight: 650; color: var(--muted); }
+.file-pick { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.file-pick-label { color: inherit; }
+.file-pick-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 6px 8px 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+}
+.file-pick-row:hover { border-color: #c5ceda; }
+.file-pick-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex: none;
+  margin: 0;
+}
+.file-pick-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #eef2f6;
+  color: #667085;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.file-pick-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--ink);
+}
+.file-pick:not(.has) .file-pick-name { color: var(--muted); }
+.file-pick-open { position: relative; z-index: 1; flex: none; display: block; }
+.file-pick-dl {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: #eef2f6;
+  color: var(--navy);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.file-pick-dl:hover { background: #e8f0ff; color: var(--blue); }
+.file-pick-x {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: #667085;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  flex: none;
+}
+.file-pick-x:hover { background: #fee4e2; color: var(--red); }
+.file-pick-input,
+input.file-pick-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
 .master-form label, .panel label { font-size: 14px; }
 .mode-switch { display: flex; gap: 10px; padding: 18px 22px 0; }
 .mode-switch button { border: 0; background: white; color: var(--ink); border-radius: 999px; padding: 10px 16px; font-weight: 650; }
 .mode-switch button.on { background: var(--navy); color: white; }
 .expense-form h3 { margin: 0 0 14px; font-size: 16px; }
-.expense-form .btn { margin-top: 12px; }
 .receipt-wrap { position: relative; }
 .receipt-box { position: relative; min-height: 72px; border: 1px dashed #d0d5dd; border-radius: 14px; display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 10px 12px; color: var(--ink); background: #f8fafc; }
 .receipt-file { position: absolute; inset: 0; opacity: 0; cursor: pointer; min-height: 0; height: 100%; }
@@ -638,7 +754,7 @@ input, select, textarea {
   .desk-detail, .desk-head, .finance-head { padding-inline: 10px; }
   .desk-detail { padding: 8px 10px 20px; }
   .detail-top { margin-bottom: 8px; }
-  .master-grid, .detail-cards, .detail-cards.three, .doc-grid, .grid-3, .grid-3b, .two, .split, .form-row { grid-template-columns: 1fr; gap: 10px; }
+  .master-grid, .file-picks, .detail-cards, .detail-cards.three, .doc-grid, .grid-3, .grid-3b, .two, .split, .form-row { grid-template-columns: 1fr; gap: 10px; }
   .actions { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
   .action { min-height: 64px; border-radius: 12px; font-size: 12px; gap: 4px; }
   .panel { padding: 12px; border-radius: 14px; }
@@ -646,8 +762,8 @@ input, select, textarea {
   .alert-when { align-items: flex-start; text-align: start; max-width: none; flex-direction: row; flex-wrap: wrap; gap: 6px 10px; }
   .alert-kind, .alert-line em { overflow-wrap: anywhere; }
   .doc-top, .detail-top, .page-head, .lines-head { flex-direction: column; align-items: stretch; gap: 8px; }
-  .detail-actions { display: flex; flex-direction: row; justify-content: flex-start; gap: 8px; }
-  .detail-actions .btn {
+  .detail-actions { display: flex; flex-direction: row; justify-content: flex-start; gap: 12px; }
+  .detail-actions .btn:has(svg) {
     position: relative;
     width: 42px;
     height: 42px;
@@ -656,7 +772,7 @@ input, select, textarea {
     border-radius: 12px;
     justify-content: center;
   }
-  .detail-actions .btn span {
+  .detail-actions .btn:has(svg) span {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -688,7 +804,7 @@ input, select, textarea {
     bottom: 0;
     z-index: 4;
     display: flex;
-    gap: 8px;
+    gap: 12px;
     align-items: center;
     background: white;
     margin: 8px -12px -12px;
@@ -723,8 +839,8 @@ input, select, textarea {
 .settings-tabs { display: flex; gap: 8px; padding: 0 22px; flex-wrap: wrap; }
 .settings-tabs button { border: 1px solid var(--line); background: white; color: var(--ink); border-radius: 999px; min-height: 38px; padding: 8px 14px; }
 .settings-tabs button.on { background: var(--navy); color: white; border-color: var(--navy); }
-.brand-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.brand-grid img { height: 84px; width: 100%; object-fit: contain; background: #f4f6f8; border-radius: 12px; margin: 8px 0; }
+.brand-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.brand-grid .file-pick-thumb { object-fit: contain; background: #f4f6f8; }
 .perm-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .check input { width: 18px; height: 18px; flex: none; }
@@ -738,7 +854,6 @@ input, select, textarea {
 .files-form input, .files-form select, .files-form textarea { color: var(--ink); border: 1px solid var(--line); border-radius: 10px; min-height: 40px; padding: 8px 10px; background: white; }
 .files-form textarea { min-height: 72px; }
 .files-form .span-2, .files-form-actions { grid-column: 1 / -1; }
-.files-form-actions { display: flex; align-items: center; gap: 8px; }
 .files-card { background: white; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
 .file-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .file-row:last-child { border-bottom: 0; }
@@ -796,7 +911,7 @@ input, select, textarea {
 .proof-box input { background: white; }
 .proof-row { display: flex; align-items: center; gap: 10px; }
 .proof-row img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; }
-.receipt-page .form-actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+.receipt-page .form-actions { display: flex; gap: 12px; align-items: center; }
 .receipt-page .form-actions .save { flex: 1; margin: 0; }
 .receipt-page .sq.pdf { width: 44px; flex: none; }
 @media (max-width: 1100px) {
