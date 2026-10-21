@@ -334,6 +334,8 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                       {reading && scanSide.current === "back" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
                       {t.scanBack}
                     </button>
+                    <button className="btn" type="submit" disabled={saving}>{t.save}</button>
+                    {current.id ? <button className="btn danger" type="button" onClick={remove}>{t.delete}</button> : null}
                   </span>
                 ) : null}
               </div>
@@ -414,10 +416,12 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                   />
                 ))}
               </div>
-              <div className="detail-actions">
-                <button className="btn" type="submit" disabled={saving}>{t.save}</button>
-                {current.id ? <button className="btn danger" type="button" onClick={remove}>{t.delete}</button> : null}
-              </div>
+              {kind === "vehicles" ? null : (
+                <div className="detail-actions">
+                  <button className="btn" type="submit" disabled={saving}>{t.save}</button>
+                  {current.id ? <button className="btn danger" type="button" onClick={remove}>{t.delete}</button> : null}
+                </div>
+              )}
             </form>
           )}
         </section>

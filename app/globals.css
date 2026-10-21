@@ -271,7 +271,8 @@ input, select, textarea {
 .master-form-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 14px; }
 .master-form-top h2 { margin: 0; }
 .scan-id { display: inline-flex; align-items: center; gap: 6px; flex: none; }
-.scan-pair { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.scan-pair { display: inline-flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.scan-pair .btn.danger { margin-inline-start: 0; }
 .scan-id .spin { animation: scan-spin 0.8s linear infinite; }
 @keyframes scan-spin { to { transform: rotate(360deg); } }
 .master-form .notice-ok, .master-form .notice-busy, .master-form .errors { margin: 0 0 14px; }
@@ -785,6 +786,7 @@ input.file-pick-input {
   .desk-detail { padding: 8px 10px 20px; }
   .detail-top { margin-bottom: 8px; }
   .master-form-top { flex-wrap: wrap; align-items: flex-start; }
+  .master-form-top .scan-pair { width: 100%; justify-content: flex-start; }
   .master-grid, .file-picks, .detail-cards, .detail-cards.three, .doc-grid, .grid-3, .grid-3b, .two, .split, .form-row { grid-template-columns: 1fr; gap: 10px; }
   .actions { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
   .action { min-height: 64px; border-radius: 12px; font-size: 12px; gap: 4px; }
