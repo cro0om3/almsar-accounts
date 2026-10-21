@@ -159,7 +159,8 @@ export async function createFileSlotAction(folder, ext, mime) {
     if (!slot) return { error: "saveFailed" };
     return slot;
   } catch (error) {
-    return { error: String(error?.message || "saveFailed") };
+    const raw = String(error?.message || "saveFailed");
+    return { error: /permission denied|schema storage/i.test(raw) ? "saveFailed" : raw };
   }
 }
 
