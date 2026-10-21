@@ -27,7 +27,8 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
   const [reading, setReading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [uploads, setUploads] = useState(emptyUploads);
-  const canEdit = kind !== "vehicles" || editing;
+  const needsLock = kind === "vehicles" || kind === "employees";
+  const canEdit = !needsLock || editing;
   const fileRefs = useRef({});
   const scanRef = useRef(null);
   const scanSide = useRef("front");
@@ -241,7 +242,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
 
   async function save(event) {
     event.preventDefault();
-    if (kind === "vehicles" && !editing) return;
+    if (needsLock && !editing) return;
     const requiredKey = labelKey || fields[0].key;
     if (!current || !String(current[requiredKey] || "").trim()) return;
     setSaving(true);
@@ -350,27 +351,31 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
           {!current ? (
             <div className="desk-blank"><h2>{t.noRecords}</h2></div>
           ) : (
-            <form className={`panel master-form${kind === "vehicles" && !canEdit ? " locked" : ""}`} onSubmit={save}>
+            <form className={`panel master-form${needsLock && !canEdit ? " locked" : ""}`} onSubmit={save}>
               <div className="master-form-top">
                 <h2>{(kind === "customers" ? (current.company || current.name) : current[labelKey]) || t.newRecord}</h2>
-                {kind === "employees" ? (
-                  <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => scanRef.current?.click()}>
-                    {reading ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
-                    {reading ? t.readingId : t.scanId}
-                  </button>
-                ) : null}
-                {kind === "vehicles" ? (
+                {needsLock ? (
                   <span className="scan-pair">
                     {canEdit ? (
                       <>
-                        <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "front"; scanRef.current?.click(); }}>
-                          {reading && scanSide.current === "front" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
-                          {t.scanFront}
-                        </button>
-                        <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "back"; scanRef.current?.click(); }}>
-                          {reading && scanSide.current === "back" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
-                          {t.scanBack}
-                        </button>
+                        {kind === "employees" ? (
+                          <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => scanRef.current?.click()}>
+                            {reading ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
+                            {reading ? t.readingId : t.scanId}
+                          </button>
+                        ) : null}
+                        {kind === "vehicles" ? (
+                          <>
+                            <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "front"; scanRef.current?.click(); }}>
+                              {reading && scanSide.current === "front" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
+                              {t.scanFront}
+                            </button>
+                            <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => { scanSide.current = "back"; scanRef.current?.click(); }}>
+                              {reading && scanSide.current === "back" ? <Loader2 size={16} className="spin" /> : <ScanLine size={16} />}
+                              {t.scanBack}
+                            </button>
+                          </>
+                        ) : null}
                         <button className="btn" type="submit" disabled={saving}><Save size={16} /> {t.save}</button>
                         {current.id ? <button className="btn ghost" type="button" onClick={cancelEdit}><X size={16} /> {t.cancel}</button> : null}
                       </>
@@ -460,7 +465,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                   />
                 ))}
               </div>
-              {kind === "vehicles" ? null : (
+              {needsLock ? null : (
                 <div className="detail-actions">
                   <button className="btn" type="submit" disabled={saving}><Save size={16} /> {t.save}</button>
                   {current.id ? <button className="btn danger" type="button" onClick={remove}><Trash2 size={16} /> {t.delete}</button> : null}

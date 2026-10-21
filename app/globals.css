@@ -98,19 +98,21 @@ img { max-width: 100%; display: block; }
 .logo-tile {
   width: 54px;
   max-width: 100%;
+  max-height: 72px;
   height: auto;
   margin: 4px auto 0;
   background: white;
   border-radius: 12px;
-  display: block;
+  display: grid;
+  place-items: center;
   overflow: hidden;
   padding: 6px;
   flex: 0 0 auto;
   min-width: 0;
   align-self: center;
 }
-.logo-tile img { width: 100%; max-width: 100%; height: auto; object-fit: contain; }
-.is-open .logo-tile { width: auto; height: auto; margin: 4px 8px 0; padding: 8px 10px; align-self: stretch; }
+.logo-tile img { width: auto; max-width: 100%; height: auto; max-height: 56px; object-fit: contain; }
+.is-open .logo-tile { width: auto; max-width: 100%; max-height: 80px; margin: 4px 8px 0; padding: 8px 10px; align-self: stretch; }
 .brand-copy { padding: 0 10px 8px; }
 .brand-copy b { display: block; color: white; font-size: 14px; }
 .brand-copy span { display: block; font-size: 12px; color: #9fb0c6; }
@@ -725,7 +727,8 @@ input.file-pick-input {
   [dir="rtl"] .side { left: auto; right: 0; transform: translateX(110%); }
   .app.menu-open .side, [dir="rtl"] .app.menu-open .side { transform: none; }
   .side { overflow: hidden; }
-  .logo-tile { width: auto; height: auto; margin: 4px 8px 8px; padding: 8px 10px; align-self: stretch; min-width: 0; }
+  .logo-tile { width: min(160px, 70%); max-height: 64px; margin: 4px auto 8px; padding: 8px 10px; align-self: center; min-width: 0; }
+  .logo-tile img { max-height: 48px; }
   .brand-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; max-width: 100%; }
   .brand-copy b, .brand-copy span { display: block; line-height: 1.35; }
   .sub { display: flex; }
