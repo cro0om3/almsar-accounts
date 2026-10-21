@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 const fields = [
   { key: "name", label: "name" },
   { key: "employeeId", label: "employeeId" },
+  { key: "idExpiry", label: "idExpiry", date: true },
   { key: "role", label: "role" },
   { key: "paymentType", label: "paymentType" },
   { key: "hourlyRate", label: "hourlyRate", number: true },

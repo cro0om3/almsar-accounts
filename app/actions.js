@@ -166,6 +166,7 @@ export async function saveEmployeeAction(formData) {
     salary: String(formData.get("salary") || ""),
     overtimeRate: String(formData.get("overtimeRate") || ""),
     bankDetails: String(formData.get("bankDetails") || ""),
+    idExpiry: String(formData.get("idExpiry") || "").slice(0, 10),
   };
   for (const key of EMPLOYEE_FILE_KEYS) {
     let filePath = String(formData.get(key) || "");

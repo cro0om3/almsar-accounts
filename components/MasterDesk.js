@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { Plus, ScanLine, Search } from "lucide-react";
 import { deleteMasterAction, saveEmployeeAction, saveMasterAction, saveVehicleAction } from "../app/actions";
 import FilePick from "./FilePick";
 import { flashSaved } from "./SavedToast";
@@ -20,8 +20,13 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const [noticeKind, setNoticeKind] = useState("");
+  const [reading, setReading] = useState(false);
   const [uploads, setUploads] = useState(emptyUploads);
   const fileRefs = useRef({});
+  const scanRef = useRef(null);
+  const readGen = useRef(0);
+  const currentRef = useRef(null);
   const fileFields = fields.filter((field) => field.file);
 
   const visible = useMemo(() => {
@@ -31,6 +36,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
   }, [rows, query, fields]);
 
   const current = draft || visible.find((row) => row.id === selectedId) || visible[0] || null;
+  currentRef.current = current;
 
   function rowLines(row) {
     if (kind === "vehicles") {
@@ -83,14 +89,19 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
     fields.forEach((field) => {
       next[field.key] = "";
     });
+    readGen.current += 1;
+    setNotice("");
+    setNoticeKind("");
     setDraft(next);
     setSelectedId("");
     resetUploads();
   }
 
   function choose(row) {
+    readGen.current += 1;
     setDraft(null);
     setNotice("");
+    setNoticeKind("");
     resetUploads();
     setSelectedId(row.id);
     requestAnimationFrame(() => {
@@ -110,6 +121,40 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
       next[field.key] = raw === "" || raw == null ? null : Number(raw);
     }
     return next;
+  }
+
+  async function readIdPhoto(file) {
+    if (!file) return;
+    const gen = ++readGen.current;
+    setSlot("idPath", { file, preview: "", cleared: false });
+    setReading(true);
+    setNoticeKind("busy");
+    setNotice(t.readingId);
+    try {
+      const { readEmiratesIdPhoto } = await import("../lib/read-employee-doc");
+      const info = await readEmiratesIdPhoto(file);
+      if (gen !== readGen.current) return;
+      if (!info) {
+        setNoticeKind("err");
+        setNotice(t.idReadFailed);
+        return;
+      }
+      const base = currentRef.current || {};
+      setDraft({
+        ...base,
+        name: info.name || base.name,
+        employeeId: info.employeeId || base.employeeId,
+        idExpiry: info.idExpiry || base.idExpiry,
+      });
+      setNoticeKind("ok");
+      setNotice(t.idReadOk);
+    } catch {
+      if (gen !== readGen.current) return;
+      setNoticeKind("err");
+      setNotice(t.idReadFailed);
+    } finally {
+      if (gen === readGen.current) setReading(false);
+    }
   }
 
   function appendFileFields(body) {
@@ -216,7 +261,27 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
             <div className="desk-blank"><h2>{t.noRecords}</h2></div>
           ) : (
             <form className="panel master-form" onSubmit={save}>
-              <h2>{(kind === "customers" ? (current.company || current.name) : current[labelKey]) || t.newRecord}</h2>
+              <div className="master-form-top">
+                <h2>{(kind === "customers" ? (current.company || current.name) : current[labelKey]) || t.newRecord}</h2>
+                {kind === "employees" ? (
+                  <button className="btn ghost scan-id" type="button" disabled={reading} onClick={() => scanRef.current?.click()}>
+                    <ScanLine size={16} /> {t.scanId}
+                  </button>
+                ) : null}
+              </div>
+              {kind === "employees" ? (
+                <input
+                  ref={scanRef}
+                  className="sr-only"
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] || null;
+                    event.target.value = "";
+                    void readIdPhoto(file);
+                  }}
+                />
+              ) : null}
               <div className="master-grid">
                 {fields.filter((field) => !field.file).map((field) => (
                   <label key={field.key} className={field.long ? "span-2" : undefined}>{t[field.label] || field.label}
@@ -261,7 +326,7 @@ export default function MasterDesk({ kind, titleKey, rows, fields, labelKey, ini
                   />
                 ))}
               </div>
-              {notice ? <div className="errors">{notice}</div> : null}
+              {notice ? <div className={noticeKind === "ok" ? "notice-ok" : noticeKind === "busy" ? "notice-busy" : "errors"}>{notice}</div> : null}
               <div className="detail-actions">
                 <button className="btn" type="submit" disabled={saving}>{t.save}</button>
                 {current.id ? <button className="btn danger" type="button" onClick={remove}>{t.delete}</button> : null}
