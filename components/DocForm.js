@@ -9,6 +9,7 @@ import { useI18n } from "./I18nProvider";
 import { customerContact, customerTitle } from "../lib/party";
 import { aed, recomputeLine, summarize } from "../lib/money";
 import { isFleetVehicle } from "../lib/vehicle-kind";
+import { tidyTerms } from "../lib/letterhead";
 
 function vehicleChoice(vehicle, isInvoice) {
   const name = vehicle.vehicleType || "";
@@ -39,7 +40,7 @@ function prettyDate(value) {
   return `${match[3]}-${MONTHS[Number(match[2]) - 1] || match[2]}-${match[1]}`;
 }
 
-export default function DocForm({ kind, doc, customers, vehicles, quotes = [], invoices = [], askCopy = false }) {
+export default function DocForm({ kind, doc, customers, vehicles, quotes = [], invoices = [], askCopy = false, defaultTerms = "" }) {
   const { t } = useI18n();
   const router = useRouter();
   const isInvoice = kind === "invoice";
@@ -60,6 +61,7 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
     status: doc.status || "draft",
     amountReceived: doc.amountReceived || 0,
     notes: doc.notes || "",
+    terms: tidyTerms(doc.terms) || defaultTerms,
   });
   const [items, setItems] = useState(doc.items?.length ? doc.items.map(recomputeLine) : [freshLine()]);
   const [copyId, setCopyId] = useState("");
@@ -105,7 +107,6 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
   function exportPayload() {
     return {
       ...header,
-      terms: doc.terms || "",
       subtotal: totals.subtotal,
       tax: totals.tax,
       total: totals.total,
@@ -382,6 +383,23 @@ export default function DocForm({ kind, doc, customers, vehicles, quotes = [], i
         </div>
         <button className="add-line" type="button" onClick={() => setItems((current) => [...current, freshLine()])}>+ {t.addLine}</button>
         <p className="k doc-date-foot">{prettyDate(header.date)}</p>
+      </section>
+
+      <section className="panel terms-panel">
+        <div className="lines-head">
+          <h2>{isInvoice ? t.invoiceTerms : t.quoteTerms}</h2>
+          {defaultTerms && header.terms !== defaultTerms ? (
+            <button className="btn ghost" type="button" onClick={() => setHeader({ ...header, terms: defaultTerms })}>{t.useDefaultTerms}</button>
+          ) : null}
+        </div>
+        <p className="lead">{t.termsHint}</p>
+        <textarea
+          className="terms-edit"
+          dir="ltr"
+          rows={12}
+          value={header.terms}
+          onChange={(event) => setHeader({ ...header, terms: event.target.value })}
+        />
       </section>
     </form>
   );

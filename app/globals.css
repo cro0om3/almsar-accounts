@@ -457,6 +457,15 @@ input, select, textarea {
 .start-list span, .start-list small { color: var(--muted); }
 .terms-html { overflow-wrap: anywhere; font-size: 13px; line-height: 1.55; }
 .terms-html table, .terms-html img { max-width: 100%; }
+.terms-panel { margin-top: 14px; }
+.terms-panel .lead { margin-bottom: 10px; }
+.terms-edit { width: 100%; max-width: 100%; min-width: 0; resize: vertical; font-size: 13px; line-height: 1.6; text-align: left; }
+.terms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.terms-view { overflow-wrap: anywhere; font-size: 13px; line-height: 1.55; }
+.terms-pay { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; margin-bottom: 10px; }
+.terms-pay span { color: var(--muted); font-size: 12px; }
+.terms-view ol { margin: 0; padding-inline-start: 22px; display: flex; flex-direction: column; gap: 6px; }
+.terms-view li { padding-inline-start: 2px; }
 .pay-box { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
 .desk-blank { min-height: 60vh; display: grid; place-items: center; align-content: center; text-align: center; color: #667085; }
 .desk-blank h2 { margin: 8px 0 4px; color: #344054; }
@@ -867,7 +876,9 @@ input.file-pick-input {
   .doc-form .details-panel { order: 1; }
   .doc-form .customer-panel { order: 2; }
   .doc-form .lines-panel { order: 3; margin-top: 0; }
-  .doc-form .summary-panel { order: 4; }
+  .doc-form .terms-panel { order: 4; margin-top: 0; }
+  .doc-form .summary-panel { order: 5; }
+  .terms-grid { grid-template-columns: 1fr; }
   .customize-columns, .doc-date-foot { display: none; }
   .form-actions {
     position: sticky;

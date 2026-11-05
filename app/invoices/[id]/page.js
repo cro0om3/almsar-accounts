@@ -3,6 +3,7 @@ import DocForm from "../../../components/DocForm";
 import {
   blankInvoice,
   getInvoice,
+  getSettings,
   invoiceFromInvoice,
   invoiceFromQuote,
   listCustomers,
@@ -17,12 +18,13 @@ export default async function InvoiceEditorPage({ params, searchParams }) {
   const { id } = await params;
   const query = await searchParams;
   const copying = id === "new" && !query.fromQuote && !query.fromInvoice;
-  const [customers, vehicles, quotes, invoices, doc] = await Promise.all([
+  const [customers, vehicles, quotes, invoices, doc, settings] = await Promise.all([
     listCustomers(),
     listVehicles(),
     listQuotes(),
     copying ? listInvoices() : Promise.resolve([]),
     id === "new" && query.fromQuote ? invoiceFromQuote(query.fromQuote) : id === "new" && query.fromInvoice ? invoiceFromInvoice(query.fromInvoice) : id === "new" ? blankInvoice() : getInvoice(id),
+    getSettings(),
   ]);
   if (!doc) notFound();
   return (
@@ -30,6 +32,7 @@ export default async function InvoiceEditorPage({ params, searchParams }) {
       key={id === "new" ? (query.fromInvoice || query.fromQuote || "blank") : id}
       kind="invoice"
       doc={doc}
+      defaultTerms={settings.invoiceTerms}
       customers={customers}
       vehicles={vehicles}
       quotes={quotes}

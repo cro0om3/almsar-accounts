@@ -16,6 +16,8 @@ export async function GET(request) {
     website: settings.website,
     footerAddressEnglish: settings.footerAddressEnglish,
     footerContactEnglish: settings.footerContactEnglish,
+    quoteTerms: settings.quoteTerms,
+    invoiceTerms: settings.invoiceTerms,
   };
   return Response.json({
     admin,

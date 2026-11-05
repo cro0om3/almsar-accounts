@@ -9,6 +9,7 @@ import { flashSaved } from "./SavedToast";
 import { useI18n } from "./I18nProvider";
 import { aed } from "../lib/money";
 import { customerContact, customerTitle } from "../lib/party";
+import { parseTerms } from "../lib/letterhead";
 
 function basisLabel(value, t) {
   if (value === "hourly") return t.hourly;
@@ -16,12 +17,16 @@ function basisLabel(value, t) {
   return value || "—";
 }
 
-function termsHtml(value) {
+function TermsList({ value, t }) {
   const text = String(value || "").trim();
-  if (!text || text === "—" || text === "-") return "";
-  const safe = text.replace(/<script[\s\S]*?<\/script>/gi, "");
-  if (/<[a-z][\s\S]*>/i.test(safe)) return safe;
-  return safe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+  const { payment, terms } = parseTerms(text === "—" || text === "-" ? "" : text);
+  if (!payment && !terms.length) return <p className="k">—</p>;
+  return (
+    <div className="terms-view">
+      {payment ? <div className="terms-pay"><span>{t.paymentTerms}</span><b>{payment}</b></div> : null}
+      {terms.length ? <ol>{terms.map((line, index) => <li key={index}>{line}</li>)}</ol> : null}
+    </div>
+  );
 }
 
 function statusLabel(status, t, kind) {
@@ -34,7 +39,7 @@ function statusLabel(status, t, kind) {
   return t.active;
 }
 
-export default function DocDesk({ kind, docs }) {
+export default function DocDesk({ kind, docs, defaultTerms = "" }) {
   const { t } = useI18n();
   const router = useRouter();
   const [selectedId, setSelectedId] = useState(docs[0]?.id || "");
@@ -231,9 +236,7 @@ export default function DocDesk({ kind, docs }) {
               </article>
               <article className="panel">
                 <h3>{t.terms}</h3>
-                {termsHtml(current.terms || current.notes) ? (
-                  <div className="terms-html" dangerouslySetInnerHTML={{ __html: termsHtml(current.terms || current.notes) }} />
-                ) : <p className="k">—</p>}
+                <TermsList value={current.terms || (kind === "po" ? current.notes : defaultTerms)} t={t} />
               </article>
             </>
           )}

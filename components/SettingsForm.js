@@ -10,17 +10,6 @@ import CompanyFiles from "./CompanyFiles";
 import FilePick from "./FilePick";
 import { useI18n } from "./I18nProvider";
 
-function plainTerms(value) {
-  return String(value || "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
 const PERMISSION_LABEL = {
   home: "home",
   fleet: "vehicleDashboard",
@@ -60,7 +49,8 @@ export default function SettingsForm({ settings, files, staff }) {
     email: settings.email || "",
     website: settings.website || "",
     currency: settings.currency || "AED",
-    defaultTerms: plainTerms(settings.defaultTerms),
+    quoteTerms: settings.quoteTerms || "",
+    invoiceTerms: settings.invoiceTerms || "",
   });
   const [saved, setSaved] = useState(false);
   const [person, setPerson] = useState(emptyStaff);
@@ -73,8 +63,17 @@ export default function SettingsForm({ settings, files, staff }) {
     setForm({ ...form, [key]: value });
   }
 
+  async function saveForm(event) {
+    event.preventDefault();
+    await saveSettingsAction(form);
+    setSaved(true);
+    flashSaved();
+    router.refresh();
+  }
+
   const tabs = [
     ["company", t.tabCompany],
+    ["terms", t.tabTerms],
     ["logo", t.tabLogo],
     ["files", t.tabFiles],
     ["access", t.tabAccess],
@@ -93,13 +92,7 @@ export default function SettingsForm({ settings, files, staff }) {
       </div>
 
       {tab === "company" ? (
-        <form className="panel master-form" style={{ margin: 22 }} onSubmit={async (event) => {
-          event.preventDefault();
-          await saveSettingsAction(form);
-          setSaved(true);
-          flashSaved();
-          router.refresh();
-        }}>
+        <form className="panel master-form" style={{ margin: 22 }} onSubmit={saveForm}>
           <div className="master-grid">
             <label>{t.companyName}<input value={form.companyName} onChange={(event) => update("companyName", event.target.value)} /></label>
             <label>{t.companyNameArabic}<input value={form.companyNameArabic} onChange={(event) => update("companyNameArabic", event.target.value)} /></label>
@@ -112,7 +105,24 @@ export default function SettingsForm({ settings, files, staff }) {
             <label>{t.footerAddress}<input value={form.footerAddressEnglish} onChange={(event) => update("footerAddressEnglish", event.target.value)} /></label>
             <label>{t.currency}<input value={form.currency} onChange={(event) => update("currency", event.target.value)} /></label>
             <label className="span-2">{t.address}<textarea value={form.address} onChange={(event) => update("address", event.target.value)} /></label>
-            <label className="span-2">{t.defaultTerms}<textarea value={form.defaultTerms} onChange={(event) => update("defaultTerms", event.target.value)} /></label>
+          </div>
+          <div className="detail-actions">
+            <button className="btn" type="submit">{t.save}</button>
+            {saved ? <span className="green">{t.saved}</span> : null}
+          </div>
+        </form>
+      ) : null}
+
+      {tab === "terms" ? (
+        <form className="panel master-form" style={{ margin: 22 }} onSubmit={saveForm}>
+          <p className="lead">{t.termsHint}</p>
+          <div className="terms-grid">
+            <label>{t.quoteTerms}
+              <textarea className="terms-edit" dir="ltr" rows={18} value={form.quoteTerms} onChange={(event) => update("quoteTerms", event.target.value)} />
+            </label>
+            <label>{t.invoiceTerms}
+              <textarea className="terms-edit" dir="ltr" rows={18} value={form.invoiceTerms} onChange={(event) => update("invoiceTerms", event.target.value)} />
+            </label>
           </div>
           <div className="detail-actions">
             <button className="btn" type="submit">{t.save}</button>

@@ -1,17 +1,18 @@
 import { notFound } from "next/navigation";
 import DocForm from "../../../components/DocForm";
-import { blankQuote, getQuote, listCustomers, listQuotes, listVehicles, quoteFromQuote } from "../../../lib/accounts";
+import { blankQuote, getQuote, getSettings, listCustomers, listQuotes, listVehicles, quoteFromQuote } from "../../../lib/accounts";
 
 export const dynamic = "force-dynamic";
 
 export default async function QuoteEditorPage({ params, searchParams }) {
   const { id } = await params;
   const query = await searchParams;
-  const [customers, vehicles, quotes, doc] = await Promise.all([
+  const [customers, vehicles, quotes, doc, settings] = await Promise.all([
     listCustomers(),
     listVehicles(),
     id === "new" ? listQuotes() : Promise.resolve([]),
     id === "new" && query.fromQuote ? quoteFromQuote(query.fromQuote) : id === "new" ? blankQuote() : getQuote(id),
+    getSettings(),
   ]);
   if (!doc) notFound();
   return (
@@ -19,6 +20,7 @@ export default async function QuoteEditorPage({ params, searchParams }) {
       key={id === "new" ? (query.fromQuote || "blank") : id}
       kind="quote"
       doc={doc}
+      defaultTerms={settings.quoteTerms}
       customers={customers}
       vehicles={vehicles}
       quotes={quotes}
