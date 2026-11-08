@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus, Pencil, Search, Trash2, Wallet } from "lucide-react";
 import { deleteExpenseAction, saveExpenseAction } from "../app/actions";
@@ -44,6 +44,16 @@ export default function ExpensesDesk({ vehicles, general }) {
   const [form, setForm] = useState(blankForm("fuel"));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [photo, setPhoto] = useState(null);
+
+  useEffect(() => {
+    if (!photo) return undefined;
+    function onKey(event) {
+      if (event.key === "Escape") setPhoto(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [photo]);
 
   const labels = {
     fuel: t.catFuel,
@@ -246,9 +256,14 @@ export default function ExpensesDesk({ vehicles, general }) {
                 {history.length === 0 ? <p className="desk-empty">{mode === "vehicle" ? t.noExpenses : t.noGeneral}</p> : history.map((row) => (
                   <article className={`expense-row ${row.id === currentGeneral?.id ? "on" : ""}`} key={row.id}>
                     {row.receiptPath ? (
-                      isPdf(null, row.receiptPath)
-                        ? <a className="receipt-empty" href={`/api/receipts/${row.receiptPath}`} target="_blank" rel="noreferrer">PDF</a>
-                        : <img src={`/api/receipts/${row.receiptPath}`} alt="" />
+                      <button
+                        className={isPdf(null, row.receiptPath) ? "receipt-empty" : "expense-shot"}
+                        type="button"
+                        title={row.description || t.receipt}
+                        onClick={() => setPhoto({ src: `/api/receipts/${row.receiptPath}`, pdf: isPdf(null, row.receiptPath), title: row.description || t.receipt })}
+                      >
+                        {isPdf(null, row.receiptPath) ? "PDF" : <img src={`/api/receipts/${row.receiptPath}`} alt={row.description || t.receipt} />}
+                      </button>
                     ) : <span className="receipt-empty"><ImagePlus size={16} /></span>}
                     <div>
                       <b>{row.description}</b>
@@ -266,6 +281,14 @@ export default function ExpensesDesk({ vehicles, general }) {
           )}
         </section>
       </div>
+      {photo ? (
+        <div className="shot-view" role="dialog" aria-modal="true" aria-label={photo.title} onClick={() => setPhoto(null)}>
+          <button className="shot-close" type="button" aria-label={t.cancel} onClick={() => setPhoto(null)}>×</button>
+          {photo.pdf
+            ? <iframe src={photo.src} title={photo.title} onClick={(event) => event.stopPropagation()} />
+            : <img src={photo.src} alt={photo.title} onClick={(event) => event.stopPropagation()} />}
+        </div>
+      ) : null}
     </div>
   );
 }
