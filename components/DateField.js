@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { displayFromIso, isoFromDisplay } from "../lib/dates";
 import { useI18n } from "./I18nProvider";
 
-export default function DateField({ value, onChange, disabled = false }) {
+export default function DateField({ value, onChange, disabled = false, allowClear = false }) {
   const { t } = useI18n();
   const iso = String(value || "").slice(0, 10);
   const [text, setText] = useState(displayFromIso(iso));
@@ -15,6 +15,11 @@ export default function DateField({ value, onChange, disabled = false }) {
 
   function commit(raw) {
     const next = isoFromDisplay(raw);
+    if (!next && allowClear && !String(raw || "").trim()) {
+      setText("");
+      onChange?.("");
+      return;
+    }
     setText(next ? displayFromIso(next) : raw);
     if (next) onChange?.(next);
   }
@@ -35,6 +40,7 @@ export default function DateField({ value, onChange, disabled = false }) {
           setText(raw);
           const next = isoFromDisplay(raw);
           if (next) onChange?.(next);
+          else if (allowClear && !raw.trim()) onChange?.("");
         }}
         onBlur={() => { if (!disabled) commit(text); }}
       />

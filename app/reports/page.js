@@ -1,25 +1,31 @@
 import ReportsView from "../../components/ReportsView";
-import { dashboard, listInvoices } from "../../lib/accounts";
-import { customerTitle } from "../../lib/party";
+import { getSettings, listCustomers, listInvoices, listPayslips, listPurchaseOrders, listVendors } from "../../lib/accounts";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const [data, invoices] = await Promise.all([dashboard(), listInvoices()]);
-  const rows = invoices
-    .filter((row) => (Number(row.amountReceived) || 0) < (Number(row.total) || 0))
-    .map((row) => ({
-      id: row.id,
-      number: row.number,
-      customerName: customerTitle(row),
-      date: row.date,
-      total: row.total,
-      amountReceived: row.amountReceived,
-    }));
+  const [invoices, customers, vendors, purchaseOrders, payslips, settings] = await Promise.all([
+    listInvoices(),
+    listCustomers(),
+    listVendors(),
+    listPurchaseOrders(),
+    listPayslips(),
+    getSettings(),
+  ]);
   return (
     <ReportsView
-      stats={{ invoices: data.invoices, billed: data.billed, quotes: data.quotes, quoteValue: data.quoteValue, outstanding: data.outstanding }}
-      rows={rows}
+      data={{ invoices, customers, vendors, purchaseOrders, payslips }}
+      settings={{
+        companyName: settings.companyName || "",
+        companyNameArabic: settings.companyNameArabic || "",
+        address: settings.address || "",
+        vatNumber: settings.vatNumber || "",
+        email: settings.email || "",
+        website: settings.website || "",
+        footerAddressEnglish: settings.footerAddressEnglish || "",
+        footerContactEnglish: settings.footerContactEnglish || "",
+        currency: settings.currency || "AED",
+      }}
     />
   );
 }
