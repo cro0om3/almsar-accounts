@@ -2,36 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2 } from "lucide-react";
-import { deleteStaffAction, saveBrandingAction, saveSettingsAction, saveStaffAction } from "../app/actions";
+import { saveBrandingAction, saveSettingsAction } from "../app/actions";
 import { flashSaved } from "./SavedToast";
-import { ACCOUNTANT_PERMISSIONS, PERMISSIONS } from "../lib/permissions";
+import AccessPanel from "./AccessPanel";
 import CompanyFiles from "./CompanyFiles";
 import FilePick from "./FilePick";
 import { useI18n } from "./I18nProvider";
-
-const PERMISSION_LABEL = {
-  home: "home",
-  fleet: "vehicleDashboard",
-  finances: "vehicleFinances",
-  quotes: "quotations",
-  invoices: "invoices",
-  receipts: "receipts",
-  orders: "purchaseOrders",
-  expenses: "expensesMenu",
-  customers: "customers",
-  vehicles: "vehicles",
-  vendors: "vendors",
-  employees: "employees",
-  payslips: "payslips",
-  reports: "reports",
-  files: "files",
-  settings: "settings",
-};
-
-function emptyStaff() {
-  return { id: "", name: "", code: "", active: true, permissions: [...ACCOUNTANT_PERMISSIONS], role: "custom" };
-}
 
 export default function SettingsForm({ settings, files, staff }) {
   const { t } = useI18n();
@@ -53,8 +29,6 @@ export default function SettingsForm({ settings, files, staff }) {
     invoiceTerms: settings.invoiceTerms || "",
   });
   const [saved, setSaved] = useState(false);
-  const [person, setPerson] = useState(emptyStaff);
-  const [staffError, setStaffError] = useState("");
   const [brandPick, setBrandPick] = useState({});
   const stamp = settings.updatedAt || "0";
 
@@ -168,81 +142,7 @@ export default function SettingsForm({ settings, files, staff }) {
         </section>
       ) : null}
 
-      {tab === "access" ? (
-        <section className="panel master-form" style={{ margin: 22 }}>
-          <p className="lead">{t.accessLead}</p>
-          <form className="master-grid" onSubmit={async (event) => {
-            event.preventDefault();
-            setStaffError("");
-            const result = await saveStaffAction(person);
-            if (result?.error) {
-              setStaffError(result.error === "taken" ? t.codeTaken : t.codeInvalid);
-              return;
-            }
-            setPerson(emptyStaff());
-            flashSaved();
-            router.refresh();
-          }}>
-            <label>{t.staffName}<input value={person.name} onChange={(event) => setPerson({ ...person, name: event.target.value })} required /></label>
-            <label>{t.accessCode}
-              <input
-                inputMode="numeric"
-                value={person.role === "admin" ? "4477" : person.code}
-                disabled={person.role === "admin"}
-                onChange={(event) => setPerson({ ...person, code: event.target.value.replace(/\D/g, "").slice(0, 8) })}
-                required
-              />
-            </label>
-            <div className="span-2 perm-grid">
-              {PERMISSIONS.map((key) => (
-                <label className="check" key={key}>
-                  <input
-                    type="checkbox"
-                    checked={person.role === "admin" || person.permissions.includes(key)}
-                    disabled={person.role === "admin"}
-                    onChange={(event) => {
-                      const permissions = event.target.checked
-                        ? [...person.permissions, key]
-                        : person.permissions.filter((item) => item !== key);
-                      setPerson({ ...person, permissions });
-                    }}
-                  />
-                  {t[PERMISSION_LABEL[key]]}
-                </label>
-              ))}
-            </div>
-            {person.role === "admin" ? null : (
-              <label className="check">
-                <input type="checkbox" checked={person.active} onChange={(event) => setPerson({ ...person, active: event.target.checked })} />
-                {t.activeAccess}
-              </label>
-            )}
-            <div className="span-2 detail-actions">
-              <button className="btn" type="submit">{person.id ? t.save : t.addStaff}</button>
-              {person.id ? <button className="btn ghost" type="button" onClick={() => { setPerson(emptyStaff()); setStaffError(""); }}>{t.cancel}</button> : null}
-              {staffError ? <span className="red">{staffError}</span> : null}
-            </div>
-          </form>
-          <div className="file-list">
-            {staff.map((row) => (
-              <article className="file-row" key={row.id}>
-                <span>
-                  <b>{row.name}</b>
-                  <small>{row.role === "admin" ? t.adminRole : row.role === "accountant" ? t.accountantRole : t.customRole} · {row.code}</small>
-                </span>
-                <button className="icon-btn" type="button" aria-label={t.edit} onClick={() => { setPerson(row); setStaffError(""); }}><Pencil size={16} /></button>
-                {row.role === "admin" ? null : (
-                  <button className="icon-btn danger" type="button" aria-label={t.delete} onClick={async () => {
-                    await deleteStaffAction(row.id);
-                    if (person.id === row.id) setPerson(emptyStaff());
-                    router.refresh();
-                  }}><Trash2 size={16} /></button>
-                )}
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {tab === "access" ? <AccessPanel staff={staff} /> : null}
     </div>
   );
 }

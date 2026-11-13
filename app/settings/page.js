@@ -6,5 +6,6 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const [settings, files, staff] = await Promise.all([getSettings(), listCompanyFiles(), listStaff()]);
-  return <SettingsForm settings={settings} files={files} staff={staff} />;
+  const people = staff.map(({ code, ...row }) => row);
+  return <SettingsForm settings={settings} files={files} staff={people} />;
 }
